@@ -3225,7 +3225,6 @@ function saveClass() {
         // Schedule notification for a reminder
 function scheduleNotification(reminder) {
     if (!reminder.date || !reminder.time) return;
-}
     // Guardar en localStorage para checkeo periódico
     const scheduled = JSON.parse(localStorage.getItem('scheduledNotifications') || '[]');
     if (!scheduled.find(s => s.id === reminder.id)) {
@@ -3247,6 +3246,7 @@ function scheduleNotification(reminder) {
             showNotification(reminder);
         }, timeUntilReminder);
     }
+}
         // Show notification
 async function showNotification(reminder, customTitle = null) {
     if (Notification.permission !== 'granted') return;
