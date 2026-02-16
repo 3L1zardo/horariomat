@@ -4348,29 +4348,6 @@ setInterval(function() {
         renderReminders();
         populateCategorySelect();
 
-        // Initialize notifications
-        (async function() {
-            const hasPermission = await requestNotificationPermission();
-            if (hasPermission) {
-                console.log('✅ Notificaciones habilitadas');
-                
-                // Check for pending notifications every minute
-                setInterval(checkPendingNotifications, 60000);
-                
-                // Check immediately
-                checkPendingNotifications();
-                
-                // Schedule all future reminders
-                reminders.forEach(reminder => {
-                    if (!reminder.completed) {
-                        scheduleNotification(reminder);
-                    }
-                });
-            } else {
-                console.log('⚠️ Notificaciones no habilitadas');
-            }
-        })();
-
         // Install button for PWA
         let deferredPrompt;
         const installButton = document.createElement('button');
@@ -4441,10 +4418,8 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
     .then(reg => console.log('✅ Service Worker registrado'))
     .catch(err => console.log('❌ Error Service Worker:', err));
-}
 
 // Escuchar mensajes del Service Worker para completar recordatorios
-if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', function(event) {
         if (event.data.type === 'COMPLETE_REMINDER') {
             const reminderId = event.data.reminderId;
@@ -4458,7 +4433,47 @@ if ('serviceWorker' in navigator) {
         }
     });
 }
+// Mostrar notificación usando SW
+async function showNotification(reminder, customTitle = null) {
+    if (Notification.permission !== 'granted') return;
 
+    const category = getCategoryById(reminder.type);
+    const title = customTitle || `${category.icon} ${category.name}`;
+    const body = `${reminder.title}\n${reminder.subject ? '📚 ' + reminder.subject : ''}\n${reminder.description || ''}`;
+
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const registration = await navigator.serviceWorker.ready;
+        registration.showNotification(title, {
+            body,
+            icon: 'data:image/svg+xml,<svg ...></svg>',
+            badge: 'data:image/svg+xml,<svg ...></svg>',
+            tag: `reminder-${reminder.id}`,
+            requireInteraction: true,
+            vibrate: [200, 100, 200],
+            data: { reminderId: reminder.id },
+        });
+    } else {
+        // Fallback si la página está abierta
+        new Notification(title, { body });
+    }
+}
+// Programar notificaciones
+function scheduleNotification(reminder) {
+    if (!reminder.date || !reminder.time) return;
+
+    const reminderDateTime = new Date(`${reminder.date}T${reminder.time}`);
+    const now = new Date();
+    const timeUntilReminder = reminderDateTime - now;
+
+    // Solo para la página abierta
+    if (timeUntilReminder > 0 && timeUntilReminder < 86400000) {
+        setTimeout(() => showNotification(reminder), timeUntilReminder);
+    }
+}
+
+// Chequear notificaciones pendientes cada minuto
+setInterval(checkPendingNotifications, 60000);
+checkPendingNotifications();
 // Manejar parámetro de URL para completar recordatorio
 window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
