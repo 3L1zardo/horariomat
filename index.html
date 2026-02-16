@@ -4477,9 +4477,6 @@ function scheduleNotification(reminder) {
     }
 }
 
-// Chequear notificaciones pendientes cada minuto
-setInterval(checkPendingNotifications, 60000);
-checkPendingNotifications();
 // Manejar parámetro de URL para completar recordatorio
 window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
