@@ -4461,7 +4461,9 @@ async function showNotification(reminder, customTitle = null) {
 function scheduleNotification(reminder) {
     if (!reminder.date || !reminder.time) return;
 
-    const reminderDateTime = new Date(`${reminder.date}T${reminder.time}`);
+    const [year, month, day] = reminder.date.split('-').map(Number);
+    const [hours, minutes] = reminder.time.split(':').map(Number);
+    const reminderDateTime = new Date(year, month - 1, day, hours, minutes);
     const now = new Date();
     const timeUntilReminder = reminderDateTime - now;
 
