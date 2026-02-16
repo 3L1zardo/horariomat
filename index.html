@@ -12,7 +12,12 @@
     
     <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
+
+    <!-- Google API for Calendar -->
+    <script src="https://apis.google.com/js/api.js"></script>
     
 <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -801,6 +806,84 @@
     </style>
 </head>
 <body>
+    <!-- Login Screen -->
+    <div id="auth-screen" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, var(--primary), #008855); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 20px; padding: 40px 30px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="font-size: 60px; margin-bottom: 10px;">📅</div>
+                <h2 style="font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 5px;">Horario ESFM</h2>
+                <p style="color: #666; font-size: 14px;">Simón Bolívar</p>
+            </div>
+
+            <!-- Login/Register Tabs -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
+                <button id="tab-login" onclick="switchAuthTab('login')" style="flex: 1; padding: 12px; border: none; background: none; font-weight: 600; color: var(--primary); border-bottom: 3px solid var(--primary); cursor: pointer;">
+                    Iniciar Sesión
+                </button>
+                <button id="tab-register" onclick="switchAuthTab('register')" style="flex: 1; padding: 12px; border: none; background: none; font-weight: 600; color: #999; cursor: pointer;">
+                    Registrarse
+                </button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-form">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #333;">Correo electrónico</label>
+                    <input type="email" id="login-email" placeholder="tu@email.com" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #333;">Contraseña</label>
+                    <input type="password" id="login-password" placeholder="••••••••" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                </div>
+                <button onclick="loginWithEmail()" style="width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; margin-bottom: 15px;">
+                    Entrar
+                </button>
+            </div>
+
+            <!-- Register Form -->
+            <div id="register-form" style="display: none;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #333;">Nombre completo</label>
+                    <input type="text" id="register-name" placeholder="Tu nombre" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #333;">Correo electrónico</label>
+                    <input type="email" id="register-email" placeholder="tu@email.com" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #333;">Contraseña</label>
+                    <input type="password" id="register-password" placeholder="Mínimo 6 caracteres" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #333;">Confirmar contraseña</label>
+                    <input type="password" id="register-password-confirm" placeholder="Repite tu contraseña" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                </div>
+                <button onclick="registerWithEmail()" style="width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; margin-bottom: 15px;">
+                    Crear Cuenta
+                </button>
+            </div>
+
+            <!-- Divider -->
+            <div style="text-align: center; margin: 20px 0; color: #999; position: relative;">
+                <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #e0e0e0;"></div>
+                <span style="background: white; padding: 0 15px; position: relative; font-size: 14px;">o continuar con</span>
+            </div>
+
+            <!-- Google Sign In -->
+            <button onclick="loginWithGoogle()" style="width: 100%; padding: 14px; background: white; color: #333; border: 2px solid #e0e0e0; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+                Google
+            </button>
+
+            <p id="auth-error" style="margin-top: 15px; color: #f44336; font-size: 14px; text-align: center; display: none;"></p>
+            <div id="auth-loading" style="margin-top: 15px; text-align: center; display: none;">
+                <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid var(--primary); border-radius: 50%; border-top-color: transparent; animation: spin 0.8s linear infinite;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App (hidden until authenticated) -->
+    <div id="main-app" style="display: none;">
     <!-- Header -->
     <div class="header">
         <h1>E.S.F.M. "SIMÓN BOLÍVAR"</h1>
@@ -1022,14 +1105,30 @@
 
             <!-- Notification Settings -->
             <div style="background: #E8F5E9; padding: 15px; border-radius: 10px; margin-top: 15px;">
-                <h3 style="margin-bottom: 10px; color: #2E7D32;">🔔 Notificaciones</h3>
-                <div id="notification-status" style="font-size: 13px; margin-bottom: 10px; padding: 10px; background: white; border-radius: 5px;"></div>
-                <button onclick="enableNotifications()" style="width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                <h3 style="margin-bottom: 15px; color: #2E7D32;">🔔 Configuración de Notificaciones</h3>
+
+                <div id="notification-status" style="font-size: 13px; margin-bottom: 15px; padding: 10px; background: white; border-radius: 5px;"></div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px;">Método de Notificaciones:</label>
+                    <select id="notification-method" onchange="saveNotificationMethod()" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 10px;">
+                        <option value="web">🔔 Notificaciones Web (En la app)</option>
+                        <option value="calendar">📅 Google Calendar (Recomendado)</option>
+                        <option value="both">🔔📅 Ambos métodos</option>
+                    </select>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 10px; line-height: 1.4;">
+                        ℹ️ <b>Google Calendar:</b> Sincroniza con tu calendario y usa las notificaciones nativas de tu dispositivo.<br>
+                        <b>Web:</b> Notificaciones dentro de la app.
+                    </p>
+                </div>
+
+                <button onclick="enableNotifications()" style="width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 8px;">
                     🔔 Habilitar Notificaciones
                 </button>
-                <p style="font-size: 11px; color: #666; margin-top: 8px; line-height: 1.4;">
-                    💡 Las notificaciones te avisarán de tus recordatorios en tiempo real
-                </p>
+
+                <button onclick="testNotification()" style="width: 100%; padding: 10px; background: white; border: 2px solid #4CAF50; color: #4CAF50; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    🧪 Probar Notificación
+                </button>
             </div>
 
             <!-- Dark Mode Settings -->
@@ -1045,6 +1144,21 @@
                 </div>
                 <p style="font-size: 11px; color: #666; margin-top: 8px; line-height: 1.4;">
                     💡 Elige el modo que sea más cómodo para tus ojos
+                </p>
+            </div>
+
+            <!-- User Account Section -->
+            <div style="background: #FFEBEE; padding: 15px; border-radius: 10px; margin-top: 15px;">
+                <h3 style="margin-bottom: 10px; color: #C62828;">👤 Cuenta de Usuario</h3>
+                <div id="user-info" style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Email:</div>
+                    <div id="user-email" style="color: #666;">Cargando...</div>
+                </div>
+                <button onclick="logout()" style="width: 100%; padding: 12px; background: #F44336; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    🚪 Cerrar Sesión
+                </button>
+                <p style="font-size: 11px; color: #666; margin-top: 8px; line-height: 1.4;">
+                    💡 Tus datos están sincronizados en la nube. Puedes volver a iniciar sesión en cualquier dispositivo.
                 </p>
             </div>
         </div>
@@ -2249,15 +2363,15 @@ function saveClass() {
             }
             
             // Show reminders
-            
+
             if (events.length === 0) {
                 dayEvents.innerHTML = '';
                 return;
             }
-            
-            const date = new Date(dateStr);
+
+            const date = parseLocalDate(dateStr);
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            
+
             dayEvents.innerHTML = `
                 <h3 style="margin-bottom: 15px; font-size: 16px;">
                     ${date.toLocaleDateString('es-BO', options)}
@@ -2312,12 +2426,12 @@ function saveClass() {
                 // Completed items go to the end
                 if (a.completed && !b.completed) return 1;
                 if (!a.completed && b.completed) return -1;
-                return new Date(a.date) - new Date(b.date);
+                return parseLocalDate(a.date) - parseLocalDate(b.date);
             });
-            
+
             content.innerHTML = sorted.map((reminder, originalIdx) => {
                 const actualIdx = reminders.findIndex(r => r.id === reminder.id);
-                const date = new Date(reminder.date);
+                const date = parseLocalDate(reminder.date);
                 const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
                 const category = getCategoryById(reminder.type);
                 
@@ -2348,11 +2462,32 @@ function saveClass() {
             return customCategories.find(c => c.id === id) || customCategories[customCategories.length - 1];
         }
 
-        function toggleComplete(idx) {
-            reminders[idx].completed = !reminders[idx].completed;
-            localStorage.setItem('reminders', JSON.stringify(reminders));
-            renderReminders();
-            updateCalendar();
+        async function toggleComplete(idx) {
+            const reminder = reminders[idx];
+            const newStatus = !reminder.completed;
+
+            try {
+                if (currentUser && (reminder.firestoreId || reminder.id)) {
+                    const docId = reminder.firestoreId || String(reminder.id);
+                    await db.collection('users').doc(currentUser.uid)
+                        .collection('reminders')
+                        .doc(docId)
+                        .update({
+                            completed: newStatus,
+                            completedAt: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null
+                        });
+                } else {
+                    // Fallback a localStorage
+                    reminders[idx].completed = newStatus;
+                    localStorage.setItem('reminders', JSON.stringify(reminders));
+                    renderReminders();
+                    updateCalendar();
+                }
+                // UI se actualiza automáticamente con el listener
+            } catch (error) {
+                console.error('Error al actualizar recordatorio:', error);
+                alert('❌ Error al actualizar recordatorio');
+            }
         }
 
         function filterReminders(filter) {
@@ -3614,7 +3749,7 @@ setInterval(function() {
             if (timeEl) timeEl.value = '';
         }
 
-        function saveReminder() {
+        async function saveReminder() {
             const type = document.getElementById('reminder-type').value;
             const subject = document.getElementById('reminder-subject').value;
             const title = document.getElementById('reminder-title').value.trim();
@@ -3639,30 +3774,65 @@ setInterval(function() {
                 description,
                 date,
                 time,
-                completed: false
+                completed: false,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            reminders.push(reminder);
-            localStorage.setItem('reminders', JSON.stringify(reminders));
-            
-            closeModal();
-            renderReminders();
-            updateCalendar();
-            
-            // Schedule notification
-            if (time) {
-                scheduleNotification(reminder);
+            try {
+                // Guardar en Firestore
+                if (currentUser) {
+                    await db.collection('users').doc(currentUser.uid)
+                        .collection('reminders')
+                        .doc(String(reminder.id))
+                        .set(reminder);
+                } else {
+                    // Fallback a localStorage si no está autenticado (no debería pasar)
+                    reminders.push(reminder);
+                    localStorage.setItem('reminders', JSON.stringify(reminders));
+                }
+
+                closeModal();
+                // renderReminders() y updateCalendar() se actualizan automáticamente con el listener
+
+                // Schedule enhanced notification (alarma mejorada)
+                if (time) {
+                    await scheduleEnhancedNotification(reminder);
+                }
+
+                alert('✅ Recordatorio guardado y notificación programada!');
+            } catch (error) {
+                console.error('Error al guardar recordatorio:', error);
+                alert('❌ Error al guardar recordatorio');
             }
-            
-            alert('✅ Recordatorio guardado');
         }
 
-        function deleteReminder(idx) {
+        async function deleteReminder(idx) {
             if (confirm('¿Eliminar este recordatorio?')) {
-                reminders.splice(idx, 1);
-                localStorage.setItem('reminders', JSON.stringify(reminders));
-                renderReminders();
-                updateCalendar();
+                const reminder = reminders[idx];
+
+                try {
+                    if (currentUser && reminder.firestoreId) {
+                        await db.collection('users').doc(currentUser.uid)
+                            .collection('reminders')
+                            .doc(reminder.firestoreId)
+                            .delete();
+                    } else if (currentUser && reminder.id) {
+                        await db.collection('users').doc(currentUser.uid)
+                            .collection('reminders')
+                            .doc(String(reminder.id))
+                            .delete();
+                    } else {
+                        // Fallback a localStorage
+                        reminders.splice(idx, 1);
+                        localStorage.setItem('reminders', JSON.stringify(reminders));
+                        renderReminders();
+                        updateCalendar();
+                    }
+                    // UI se actualiza automáticamente con el listener
+                } catch (error) {
+                    console.error('Error al eliminar recordatorio:', error);
+                    alert('❌ Error al eliminar recordatorio');
+                }
             }
         }
 
@@ -4511,10 +4681,31 @@ const firebaseConfig = {
 
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 const messaging = firebase.messaging();
+
+// Habilitar persistencia offline de Firestore
+db.enablePersistence({ synchronizeTabs: true })
+    .catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.warn('Persistencia: Múltiples pestañas abiertas');
+        } else if (err.code == 'unimplemented') {
+            console.warn('Persistencia: No soportada en este navegador');
+        }
+    });
+
+// Variables globales de usuario
+let currentUser = null;
+let userDataUnsubscribers = [];
 
 // Clave VAPID
 const VAPID_KEY = 'BBHwc5Mppt2z98YM4uazXcDnI6luBVutOdbmcBdIg9fqGxR9avIEDeONgnq9U33vK5wbE3LpJ1LFXtAhov9qMfY';
+
+// Google Calendar API Config
+const CALENDAR_CLIENT_ID = '1046696947499-YOUR_OAUTH_CLIENT.apps.googleusercontent.com'; // Necesitarás configurar esto
+const CALENDAR_API_KEY = 'YOUR_API_KEY'; // Necesitarás configurar esto
+const CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
 // Solicitar permiso y obtener token
 async function initFirebasePush() {
@@ -4542,8 +4733,816 @@ messaging.onMessage((payload) => {
     });
 });
 
+// ==============================================
+// FUNCIONES HELPER PARA FECHAS (ARREGLA BUG DE ZONA HORARIA)
+// ==============================================
+
+/**
+ * Parsea una fecha en formato YYYY-MM-DD sin problemas de zona horaria
+ */
+function parseLocalDate(dateStr) {
+    if (!dateStr) return null;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}
+
+/**
+ * Convierte una fecha a formato YYYY-MM-DD local
+ */
+function formatLocalDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// ==============================================
+// SISTEMA DE AUTENTICACIÓN
+// ==============================================
+
+// Observer de autenticación
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        currentUser = user;
+        console.log('✅ Usuario autenticado:', user.email);
+
+        // Mostrar app principal
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+
+        // Actualizar header con nombre de usuario
+        const subtitle = document.querySelector('.header .subtitle');
+        if (subtitle) {
+            subtitle.textContent = `👤 ${user.displayName || user.email}`;
+        }
+
+        // Actualizar email en configuración
+        const userEmailEl = document.getElementById('user-email');
+        if (userEmailEl) {
+            userEmailEl.textContent = user.email;
+        }
+
+        // Cargar método de notificaciones preferido
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            const notificationMethod = userData.notificationMethod || 'web';
+            const methodSelect = document.getElementById('notification-method');
+            if (methodSelect) {
+                methodSelect.value = notificationMethod;
+            }
+        }
+
+        // Verificar si necesita migración desde localStorage
+        await checkAndMigrateData(user.uid);
+
+        // Iniciar listeners de sincronización en tiempo real
+        setupRealtimeListeners(user.uid);
+
+    } else {
+        currentUser = null;
+        console.log('❌ Usuario no autenticado');
+
+        // Limpiar listeners
+        userDataUnsubscribers.forEach(unsub => unsub());
+        userDataUnsubscribers = [];
+
+        // Mostrar pantalla de login
+        document.getElementById('auth-screen').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'none';
+    }
+});
+
+// Cambiar tabs de login/registro
+function switchAuthTab(tab) {
+    const loginTab = document.getElementById('tab-login');
+    const registerTab = document.getElementById('tab-register');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+
+    if (tab === 'login') {
+        loginTab.style.color = 'var(--primary)';
+        loginTab.style.borderBottom = '3px solid var(--primary)';
+        registerTab.style.color = '#999';
+        registerTab.style.borderBottom = 'none';
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+    } else {
+        registerTab.style.color = 'var(--primary)';
+        registerTab.style.borderBottom = '3px solid var(--primary)';
+        loginTab.style.color = '#999';
+        loginTab.style.borderBottom = 'none';
+        registerForm.style.display = 'block';
+        loginForm.style.display = 'none';
+    }
+
+    hideAuthError();
+}
+
+// Login con email/password
+async function loginWithEmail() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (!email || !password) {
+        showAuthError('Por favor completa todos los campos');
+        return;
+    }
+
+    showAuthLoading(true);
+    hideAuthError();
+
+    try {
+        await auth.signInWithEmailAndPassword(email, password);
+        // El onAuthStateChanged se encargará del resto
+    } catch (error) {
+        console.error('Error login:', error);
+        let message = 'Error al iniciar sesión';
+
+        if (error.code === 'auth/user-not-found') {
+            message = 'No existe una cuenta con este correo';
+        } else if (error.code === 'auth/wrong-password') {
+            message = 'Contraseña incorrecta';
+        } else if (error.code === 'auth/invalid-email') {
+            message = 'Correo electrónico inválido';
+        } else if (error.code === 'auth/too-many-requests') {
+            message = 'Demasiados intentos fallidos. Intenta más tarde';
+        }
+
+        showAuthError(message);
+    } finally {
+        showAuthLoading(false);
+    }
+}
+
+// Registro con email/password
+async function registerWithEmail() {
+    const name = document.getElementById('register-name').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+    const passwordConfirm = document.getElementById('register-password-confirm').value;
+
+    if (!name || !email || !password || !passwordConfirm) {
+        showAuthError('Por favor completa todos los campos');
+        return;
+    }
+
+    if (password.length < 6) {
+        showAuthError('La contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+
+    if (password !== passwordConfirm) {
+        showAuthError('Las contraseñas no coinciden');
+        return;
+    }
+
+    showAuthLoading(true);
+    hideAuthError();
+
+    try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+
+        // Actualizar perfil con nombre
+        await userCredential.user.updateProfile({
+            displayName: name
+        });
+
+        // Crear documento de perfil en Firestore
+        await db.collection('users').doc(userCredential.user.uid).set({
+            name: name,
+            email: email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            notificationMethod: 'web', // Default: Web notifications
+            theme: 'light'
+        });
+
+        console.log('✅ Usuario registrado:', email);
+        // El onAuthStateChanged se encargará del resto
+    } catch (error) {
+        console.error('Error registro:', error);
+        let message = 'Error al crear la cuenta';
+
+        if (error.code === 'auth/email-already-in-use') {
+            message = 'Ya existe una cuenta con este correo';
+        } else if (error.code === 'auth/invalid-email') {
+            message = 'Correo electrónico inválido';
+        } else if (error.code === 'auth/weak-password') {
+            message = 'La contraseña es muy débil';
+        }
+
+        showAuthError(message);
+    } finally {
+        showAuthLoading(false);
+    }
+}
+
+// Login con Google
+async function loginWithGoogle() {
+    showAuthLoading(true);
+    hideAuthError();
+
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({
+            prompt: 'select_account'
+        });
+
+        const result = await auth.signInWithPopup(provider);
+
+        // Crear/actualizar perfil en Firestore
+        const userDoc = await db.collection('users').doc(result.user.uid).get();
+
+        if (!userDoc.exists) {
+            await db.collection('users').doc(result.user.uid).set({
+                name: result.user.displayName,
+                email: result.user.email,
+                photoURL: result.user.photoURL,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                notificationMethod: 'web',
+                theme: 'light'
+            });
+        }
+
+        console.log('✅ Login con Google exitoso');
+        // El onAuthStateChanged se encargará del resto
+    } catch (error) {
+        console.error('Error Google login:', error);
+
+        if (error.code !== 'auth/popup-closed-by-user') {
+            showAuthError('Error al iniciar sesión con Google');
+        }
+    } finally {
+        showAuthLoading(false);
+    }
+}
+
+// Cerrar sesión
+async function logout() {
+    if (confirm('¿Estás seguro que quieres cerrar sesión?')) {
+        try {
+            await auth.signOut();
+            console.log('✅ Sesión cerrada');
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            alert('Error al cerrar sesión');
+        }
+    }
+}
+
+// Helpers UI
+function showAuthError(message) {
+    const errorEl = document.getElementById('auth-error');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+}
+
+function hideAuthError() {
+    const errorEl = document.getElementById('auth-error');
+    errorEl.style.display = 'none';
+}
+
+function showAuthLoading(show) {
+    document.getElementById('auth-loading').style.display = show ? 'block' : 'none';
+}
+
+// ==============================================
+// MIGRACIÓN DE DATOS LOCALSTORAGE → FIRESTORE
+// ==============================================
+
+async function checkAndMigrateData(userId) {
+    try {
+        // Verificar si ya migró antes
+        const migrated = localStorage.getItem('migrated_to_firebase');
+
+        if (migrated) {
+            console.log('✅ Datos ya migrados previamente');
+            return;
+        }
+
+        // Verificar si hay datos en localStorage
+        const hasLocalData = localStorage.getItem('reminders') ||
+                            localStorage.getItem('customSchedule') ||
+                            localStorage.getItem('attendanceRecords');
+
+        if (!hasLocalData) {
+            console.log('ℹ️ No hay datos locales para migrar');
+            localStorage.setItem('migrated_to_firebase', 'true');
+            return;
+        }
+
+        // Confirmar migración
+        if (!confirm('🔄 Detectamos datos guardados en este dispositivo.\n\n¿Quieres sincronizarlos con tu cuenta en la nube?\n\nEsto te permitirá acceder a tus datos desde cualquier dispositivo.')) {
+            localStorage.setItem('migrated_to_firebase', 'true');
+            return;
+        }
+
+        console.log('🔄 Iniciando migración de datos...');
+
+        const batch = db.batch();
+        const userRef = db.collection('users').doc(userId);
+
+        // Migrar recordatorios
+        const remindersData = localStorage.getItem('reminders');
+        if (remindersData) {
+            const reminders = JSON.parse(remindersData);
+            reminders.forEach(reminder => {
+                const reminderRef = userRef.collection('reminders').doc(String(reminder.id));
+                batch.set(reminderRef, reminder);
+            });
+            console.log(`📝 Migrando ${reminders.length} recordatorios`);
+        }
+
+        // Migrar horario personalizado
+        const scheduleData = localStorage.getItem('customSchedule');
+        if (scheduleData) {
+            batch.set(userRef.collection('settings').doc('customSchedule'), {
+                data: JSON.parse(scheduleData),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log('📅 Migrando horario personalizado');
+        }
+
+        // Migrar asistencias
+        const attendanceData = localStorage.getItem('attendanceRecords');
+        if (attendanceData) {
+            const records = JSON.parse(attendanceData);
+            records.forEach((record, index) => {
+                const recordRef = userRef.collection('attendance').doc(String(index));
+                batch.set(recordRef, record);
+            });
+            console.log(`✅ Migrando ${records.length} registros de asistencia`);
+        }
+
+        // Migrar lista de estudiantes
+        const studentsData = localStorage.getItem('studentsList');
+        if (studentsData) {
+            batch.set(userRef.collection('settings').doc('studentsList'), {
+                data: JSON.parse(studentsData),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        // Migrar categorías personalizadas
+        const categoriesData = localStorage.getItem('customCategories');
+        if (categoriesData) {
+            batch.set(userRef.collection('settings').doc('customCategories'), {
+                data: JSON.parse(categoriesData),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        // Migrar configuración académica
+        const academicConfigData = localStorage.getItem('academicConfig');
+        if (academicConfigData) {
+            batch.set(userRef.collection('settings').doc('academicConfig'), {
+                data: JSON.parse(academicConfigData),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        // Migrar catálogos
+        const catalogsToMigrate = [
+            'subjectsCatalog',
+            'teachersCatalog',
+            'periodsCatalog',
+            'timeSlotsCatalog',
+            'evaluationCriteria',
+            'studentGrades'
+        ];
+
+        catalogsToMigrate.forEach(catalog => {
+            const data = localStorage.getItem(catalog);
+            if (data) {
+                batch.set(userRef.collection('settings').doc(catalog), {
+                    data: JSON.parse(data),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        });
+
+        // Ejecutar migración
+        await batch.commit();
+
+        // Marcar como migrado
+        localStorage.setItem('migrated_to_firebase', 'true');
+
+        console.log('✅ Migración completada exitosamente');
+        alert('✅ Tus datos se sincronizaron correctamente con la nube!\n\nAhora puedes acceder a ellos desde cualquier dispositivo.');
+
+    } catch (error) {
+        console.error('❌ Error en migración:', error);
+        alert('⚠️ Hubo un problema al sincronizar tus datos. Tus datos locales no se perderán.');
+    }
+}
+
+// ==============================================
+// SINCRONIZACIÓN EN TIEMPO REAL CON FIRESTORE
+// ==============================================
+
+function setupRealtimeListeners(userId) {
+    const userRef = db.collection('users').doc(userId);
+
+    // Listener para recordatorios
+    const remindersUnsub = userRef.collection('reminders')
+        .onSnapshot((snapshot) => {
+            reminders = [];
+            snapshot.forEach(doc => {
+                reminders.push({ ...doc.data(), firestoreId: doc.id });
+            });
+
+            // Actualizar UI
+            if (currentView === 'recordatorios') {
+                renderReminders();
+            }
+            if (currentView === 'calendario') {
+                updateCalendar();
+            }
+
+            console.log(`🔄 Recordatorios sincronizados: ${reminders.length}`);
+        }, (error) => {
+            console.error('Error listener recordatorios:', error);
+        });
+
+    userDataUnsubscribers.push(remindersUnsub);
+
+    // Listener para horario personalizado
+    const scheduleUnsub = userRef.collection('settings').doc('customSchedule')
+        .onSnapshot((doc) => {
+            if (doc.exists && doc.data().data) {
+                customSchedule = doc.data().data;
+                if (currentView === 'horario') {
+                    renderSchedule();
+                }
+                console.log('🔄 Horario sincronizado');
+            }
+        }, (error) => {
+            console.error('Error listener horario:', error);
+        });
+
+    userDataUnsubscribers.push(scheduleUnsub);
+
+    // Listener para asistencias
+    const attendanceUnsub = userRef.collection('attendance')
+        .onSnapshot((snapshot) => {
+            attendanceRecords = [];
+            snapshot.forEach(doc => {
+                attendanceRecords.push({ ...doc.data(), firestoreId: doc.id });
+            });
+
+            if (currentView === 'asistencia') {
+                loadAttendanceData();
+            }
+
+            console.log(`🔄 Asistencias sincronizadas: ${attendanceRecords.length}`);
+        }, (error) => {
+            console.error('Error listener asistencias:', error);
+        });
+
+    userDataUnsubscribers.push(attendanceUnsub);
+
+    // Listeners para configuraciones
+    const settingsKeys = [
+        'customCategories',
+        'academicConfig',
+        'subjectsCatalog',
+        'teachersCatalog',
+        'periodsCatalog',
+        'timeSlotsCatalog',
+        'studentsList',
+        'evaluationCriteria',
+        'studentGrades'
+    ];
+
+    settingsKeys.forEach(key => {
+        const unsub = userRef.collection('settings').doc(key)
+            .onSnapshot((doc) => {
+                if (doc.exists && doc.data().data) {
+                    // Actualizar variable global correspondiente
+                    window[key] = doc.data().data;
+                    console.log(`🔄 ${key} sincronizado`);
+                }
+            }, (error) => {
+                console.error(`Error listener ${key}:`, error);
+            });
+
+        userDataUnsubscribers.push(unsub);
+    });
+}
+
+// ==============================================
+// GESTIÓN DE MÉTODO DE NOTIFICACIONES
+// ==============================================
+
+async function saveNotificationMethod() {
+    if (!currentUser) return;
+
+    const method = document.getElementById('notification-method').value;
+
+    try {
+        await db.collection('users').doc(currentUser.uid).update({
+            notificationMethod: method
+        });
+
+        console.log('✅ Método de notificaciones actualizado:', method);
+
+        // Mostrar mensaje según el método
+        let message = '';
+        if (method === 'calendar') {
+            message = '✅ Tus recordatorios se sincronizarán con Google Calendar.\n\nLa próxima vez que agregues un recordatorio, se creará automáticamente en tu calendario.';
+        } else if (method === 'web') {
+            message = '✅ Usarás notificaciones web de la aplicación.\n\nAsegúrate de habilitar los permisos de notificación.';
+        } else if (method === 'both') {
+            message = '✅ Usarás ambos métodos: Google Calendar + Notificaciones Web.\n\nTus recordatorios estarán en tu calendario Y recibirás notificaciones en la app.';
+        }
+
+        if (message) {
+            alert(message);
+        }
+
+    } catch (error) {
+        console.error('Error al guardar método de notificaciones:', error);
+        alert('❌ Error al guardar configuración');
+    }
+}
+
+async function testNotification() {
+    const hasPermission = await requestNotificationPermission();
+
+    if (hasPermission) {
+        new Notification('🎉 ¡Notificación de Prueba!', {
+            body: 'Las notificaciones están funcionando correctamente. ¡Ya estás listo!',
+            icon: 'icon-192.png',
+            badge: 'icon-192.png',
+            vibrate: [200, 100, 200, 100, 200],
+            requireInteraction: false,
+            tag: 'test-notification'
+        });
+
+        // También mostrar notificación persistente si el service worker está disponible
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification('🔔 Notificación Persistente', {
+                    body: 'Esta notificación funciona incluso cuando cierras la app.',
+                    icon: 'icon-192.png',
+                    badge: 'icon-192.png',
+                    vibrate: [200, 100, 200],
+                    requireInteraction: true,
+                    actions: [
+                        { action: 'close', title: 'Cerrar' }
+                    ]
+                });
+            });
+        }
+
+        alert('✅ Notificación enviada!\n\nDeberías verla aparecer ahora.');
+    } else {
+        alert('❌ No se pudo enviar la notificación.\n\nAsegúrate de permitir las notificaciones en tu navegador.');
+    }
+}
+
+// ==============================================
+// SISTEMA MEJORADO DE NOTIFICACIONES (ALARMAS)
+// ==============================================
+
+/**
+ * Programa una notificación mejorada tipo alarma para un recordatorio
+ */
+async function scheduleEnhancedNotification(reminder) {
+    if (!reminder.date || !reminder.time) {
+        console.log('⚠️ Recordatorio sin fecha/hora, no se programa notificación');
+        return;
+    }
+
+    // Obtener método de notificaciones del usuario
+    let notificationMethod = 'web'; // Default
+    if (currentUser) {
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        if (userDoc.exists) {
+            notificationMethod = userDoc.data().notificationMethod || 'web';
+        }
+    }
+
+    // Google Calendar
+    if (notificationMethod === 'calendar' || notificationMethod === 'both') {
+        await addToGoogleCalendar(reminder);
+    }
+
+    // Web Notifications
+    if (notificationMethod === 'web' || notificationMethod === 'both') {
+        scheduleWebNotification(reminder);
+    }
+}
+
+/**
+ * Programa una notificación web mejorada
+ */
+function scheduleWebNotification(reminder) {
+    const reminderDate = parseLocalDate(reminder.date);
+    const [hours, minutes] = reminder.time.split(':').map(Number);
+    reminderDate.setHours(hours, minutes, 0, 0);
+
+    const now = new Date();
+    const timeUntilReminder = reminderDate - now;
+
+    if (timeUntilReminder > 0) {
+        // Programar notificación
+        setTimeout(() => {
+            showAlarmNotification(reminder);
+        }, timeUntilReminder);
+
+        // También programar recordatorio 15 minutos antes
+        const reminderBefore = timeUntilReminder - (15 * 60 * 1000);
+        if (reminderBefore > 0) {
+            setTimeout(() => {
+                showAlarmNotification(reminder, true);
+            }, reminderBefore);
+        }
+
+        console.log(`⏰ Notificación programada para ${reminder.date} ${reminder.time}`);
+    } else {
+        console.log('⚠️ La fecha del recordatorio ya pasó');
+    }
+}
+
+/**
+ * Muestra una notificación tipo alarma (persistente y con sonido)
+ */
+async function showAlarmNotification(reminder, isBefore = false) {
+    const hasPermission = await requestNotificationPermission();
+    if (!hasPermission) return;
+
+    const title = isBefore
+        ? `⏰ Recordatorio en 15 minutos`
+        : `🔔 ${reminder.title}`;
+
+    const body = isBefore
+        ? `Próximamente: ${reminder.title}\n${reminder.subject || ''}`
+        : `${reminder.subject || ''}\n${reminder.description || ''}`.trim();
+
+    const options = {
+        body: body,
+        icon: 'icon-512.png',
+        badge: 'icon-192.png',
+        vibrate: [300, 100, 300, 100, 300, 100, 300], // Vibración más larga
+        requireInteraction: true, // No se cierra automáticamente
+        tag: `reminder-${reminder.id}`,
+        renotify: true,
+        actions: [
+            { action: 'complete', title: '✅ Completar' },
+            { action: 'snooze', title: '⏰ Posponer 10 min' },
+            { action: 'close', title: '✖️ Cerrar' }
+        ],
+        data: {
+            reminderId: reminder.id,
+            url: '/',
+            timestamp: Date.now()
+        }
+    };
+
+    // Intentar usar Service Worker para notificación persistente
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification(title, options);
+            console.log('🔔 Notificación de alarma mostrada (Service Worker)');
+        } catch (error) {
+            console.error('Error al mostrar notificación SW:', error);
+            // Fallback a notificación normal
+            new Notification(title, options);
+        }
+    } else {
+        // Notificación normal
+        new Notification(title, options);
+    }
+}
+
+// ==============================================
+// INTEGRACIÓN CON GOOGLE CALENDAR
+// ==============================================
+
+let gapiInited = false;
+let gisInited = false;
+let tokenClient;
+
+/**
+ * Inicializa Google Calendar API
+ */
+function initGoogleCalendar() {
+    // Cargar GAPI
+    gapi.load('client', async () => {
+        await gapi.client.init({
+            apiKey: CALENDAR_API_KEY,
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+        });
+        gapiInited = true;
+        console.log('✅ Google Calendar API inicializada');
+    });
+
+    // Cargar GIS (Google Identity Services)
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CALENDAR_CLIENT_ID,
+        scope: CALENDAR_SCOPES,
+        callback: '', // Se define en cada uso
+    });
+    gisInited = true;
+}
+
+/**
+ * Agrega un recordatorio a Google Calendar
+ */
+async function addToGoogleCalendar(reminder) {
+    if (!gapiInited || !gisInited) {
+        console.log('⚠️ Google Calendar no inicializado. Inicializando...');
+        initGoogleCalendar();
+
+        // Esperar un momento para que inicialice
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // Pedir autorización
+    tokenClient.callback = async (response) => {
+        if (response.error !== undefined) {
+            console.error('Error de autorización:', response);
+            return;
+        }
+
+        // Crear evento
+        try {
+            const reminderDate = parseLocalDate(reminder.date);
+            const [hours, minutes] = reminder.time.split(':').map(Number);
+
+            const startDateTime = new Date(reminderDate);
+            startDateTime.setHours(hours, minutes, 0, 0);
+
+            const endDateTime = new Date(startDateTime);
+            endDateTime.setHours(hours + 1, minutes, 0, 0); // 1 hora de duración por defecto
+
+            const event = {
+                summary: reminder.title,
+                description: `${reminder.subject || ''}\n\n${reminder.description || ''}`.trim(),
+                start: {
+                    dateTime: startDateTime.toISOString(),
+                    timeZone: 'America/La_Paz' // Bolivia timezone
+                },
+                end: {
+                    dateTime: endDateTime.toISOString(),
+                    timeZone: 'America/La_Paz'
+                },
+                reminders: {
+                    useDefault: false,
+                    overrides: [
+                        { method: 'popup', minutes: 15 },
+                        { method: 'popup', minutes: 0 }
+                    ]
+                },
+                colorId: '9' // Color azul para recordatorios
+            };
+
+            const request = await gapi.client.calendar.events.insert({
+                calendarId: 'primary',
+                resource: event
+            });
+
+            console.log('✅ Evento creado en Google Calendar:', request.result.htmlLink);
+            alert('✅ Recordatorio agregado a tu Google Calendar!\n\nRecibirás notificaciones de tu calendario.');
+
+        } catch (error) {
+            console.error('Error al crear evento en Calendar:', error);
+            alert('❌ No se pudo agregar al calendario. Inténtalo de nuevo.');
+        }
+    };
+
+    // Solicitar token
+    if (gapi.client.getToken() === null) {
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+        tokenClient.requestAccessToken({ prompt: '' });
+    }
+}
+
 // Iniciar cuando carga la página
-initFirebasePush();
+// El auth.onAuthStateChanged se encargará de mostrar login o app
+
+// Inicializar Google Calendar API cuando cargue
+if (typeof gapi !== 'undefined' && typeof google !== 'undefined') {
+    setTimeout(() => {
+        try {
+            initGoogleCalendar();
+        } catch (error) {
+            console.log('⚠️ Google Calendar API no disponible:', error);
+        }
+    }, 2000);
+}
 </script>
+
+<!-- Animation for loading spinner -->
+<style>
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
+</div> <!-- Cierre de main-app -->
 </body>
 </html>
