@@ -19,12 +19,21 @@
     <!-- SheetJS for Excel export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
+    <!-- Google Fonts - Inter for modern, clean typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <title>Horario ESFM Simón Bolívar</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        button, input, select, textarea {
+            font-family: inherit;
         }
 
         :root {
@@ -48,12 +57,16 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
             overflow-x: hidden;
             padding-bottom: 70px;
             transition: background-color 0.3s, color 0.3s;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            letter-spacing: -0.01em;
+            line-height: 1.5;
         }
 
         /* Header */
@@ -70,11 +83,15 @@
         .header h1 {
             font-size: 18px;
             margin-bottom: 5px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
         }
 
         .header .subtitle {
             font-size: 13px;
             opacity: 0.9;
+            font-weight: 500;
+            letter-spacing: 0.03em;
         }
 
         /* Date Navigation */
@@ -98,8 +115,9 @@
         }
 
         .current-date {
-            font-weight: 600;
+            font-weight: 700;
             font-size: 16px;
+            letter-spacing: -0.01em;
         }
 
         /* Tab Navigation */
@@ -128,13 +146,14 @@
         }
 
         .tab-day {
-            font-weight: 600;
+            font-weight: 700;
             font-size: 14px;
         }
 
         .tab-date {
             font-size: 11px;
             opacity: 0.7;
+            font-weight: 500;
         }
 
         .tab.holiday {
@@ -312,14 +331,14 @@
             font-size: 11px;
             font-weight: 700;
         }
-        }
 
         .schedule-card .period {
             font-size: 11px;
             color: #999;
             text-transform: uppercase;
             margin-bottom: 3px;
-            font-weight: 500;
+            font-weight: 600;
+            letter-spacing: 0.05em;
         }
 
         .schedule-card .time {
@@ -327,19 +346,22 @@
             color: var(--primary);
             font-weight: 600;
             margin-bottom: 8px;
+            letter-spacing: 0.01em;
         }
 
         .schedule-card .subject {
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             margin-bottom: 8px;
-            line-height: 1.3;
+            line-height: 1.35;
+            letter-spacing: -0.01em;
         }
 
         .schedule-card .teacher {
             font-size: 13px;
             color: #666;
             margin-bottom: 12px;
+            font-weight: 500;
         }
 
         .schedule-card .actions {
@@ -355,6 +377,8 @@
             font-size: 12px;
             cursor: pointer;
             transition: all 0.2s;
+            font-family: inherit;
+            font-weight: 500;
         }
 
         .btn-note {
@@ -415,10 +439,12 @@
 
         .weekday {
             text-align: center;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 12px;
             padding: 10px 0;
             color: var(--primary);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
 
         .days {
@@ -521,8 +547,9 @@
         }
 
         .reminder-item .title {
-            font-weight: 600;
+            font-weight: 700;
             margin-bottom: 5px;
+            letter-spacing: -0.01em;
         }
 
         .reminder-item .type {
@@ -657,6 +684,7 @@
             cursor: pointer;
             color: #666;
             font-size: 11px;
+            font-weight: 500;
             transition: all 0.2s;
         }
 
@@ -699,8 +727,9 @@
 
         .modal-header {
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 700;
             margin-bottom: 15px;
+            letter-spacing: -0.02em;
         }
 
         .form-group {
@@ -722,6 +751,7 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 14px;
+            font-family: inherit;
         }
 
         .form-group textarea {
@@ -909,7 +939,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
     <!-- Config View -->
     <div class="tab-content" id="config-view">
@@ -1015,6 +1044,7 @@
                 </p>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- FAB Button -->
@@ -1717,17 +1747,7 @@
         // Student grades
         let studentGrades = JSON.parse(localStorage.getItem('studentGrades') || '{}');
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            initTabs();
-            initNavigation();
-            updateWeekDisplay();
-            renderSchedule();
-            updateCalendar();
-            renderReminders();
-            setTodayDate();
-            populateCategorySelect();
-        });
+        // Initialize (handled at bottom of script)
 
         function initTabs() {
             document.querySelectorAll('.tab').forEach(tab => {
@@ -1897,8 +1917,6 @@
             const selectedDayIndex = dayIndexMap[selectedDay];
             
             // Determine day status using ACTUAL DATES not day of week
-            const viewingDate = new Date(actualDate);
-            viewingDate.setHours(0, 0, 0, 0);
             const todayDate = new Date();
             todayDate.setHours(0, 0, 0, 0);
             
@@ -3057,13 +3075,7 @@
         }
 
 
-        // Event Listeners for modals
-        document.getElementById('take-attendance-modal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeTakeAttendance();
-            }
-        });
-
+        // Event Listeners for modals (click backdrop to close)
         document.getElementById('attendance-settings-modal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeAttendanceSettings();
@@ -3496,6 +3508,631 @@
             }
         }
 
+        // ============================================
+        // MISSING FUNCTIONS - ADDED
+        // ============================================
+
+        function setTodayDate() {
+            const today = new Date();
+            const dayMap = { 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado', 0: 'domingo' };
+            const todayDay = dayMap[today.getDay()];
+            if (todayDay) {
+                selectedDay = todayDay;
+                renderDayTabs();
+                renderSchedule();
+            }
+        }
+
+        function clearForm() {
+            const titleEl = document.getElementById('reminder-title');
+            const descEl = document.getElementById('reminder-description');
+            const dateEl = document.getElementById('reminder-date');
+            const timeEl = document.getElementById('reminder-time');
+            if (titleEl) titleEl.value = '';
+            if (descEl) descEl.value = '';
+            if (dateEl) dateEl.value = '';
+            if (timeEl) timeEl.value = '';
+        }
+
+        function saveReminder() {
+            const type = document.getElementById('reminder-type').value;
+            const subject = document.getElementById('reminder-subject').value;
+            const title = document.getElementById('reminder-title').value.trim();
+            const description = document.getElementById('reminder-description').value.trim();
+            const date = document.getElementById('reminder-date').value;
+            const time = document.getElementById('reminder-time').value;
+
+            if (!title) {
+                alert('Por favor ingresa un título');
+                return;
+            }
+            if (!date) {
+                alert('Por favor selecciona una fecha');
+                return;
+            }
+
+            const reminder = {
+                id: Date.now(),
+                type,
+                subject,
+                title,
+                description,
+                date,
+                time,
+                completed: false
+            };
+
+            reminders.push(reminder);
+            localStorage.setItem('reminders', JSON.stringify(reminders));
+            
+            closeModal();
+            renderReminders();
+            updateCalendar();
+            
+            // Schedule notification
+            if (time) {
+                scheduleNotification(reminder);
+            }
+            
+            alert('✅ Recordatorio guardado');
+        }
+
+        function deleteReminder(idx) {
+            if (confirm('¿Eliminar este recordatorio?')) {
+                reminders.splice(idx, 1);
+                localStorage.setItem('reminders', JSON.stringify(reminders));
+                renderReminders();
+                updateCalendar();
+            }
+        }
+
+        function addQuickNote(day, idx) {
+            const schedule = customSchedule || scheduleData;
+            const cls = schedule[day][idx];
+            const note = prompt(`📝 Nota rápida para ${cls.subject}:`);
+            if (note && note.trim()) {
+                const reminder = {
+                    id: Date.now(),
+                    type: 'tarea',
+                    subject: cls.subject,
+                    title: note.trim(),
+                    description: '',
+                    date: new Date().toISOString().split('T')[0],
+                    time: '',
+                    completed: false
+                };
+                reminders.push(reminder);
+                localStorage.setItem('reminders', JSON.stringify(reminders));
+                renderReminders();
+                updateCalendar();
+                alert('✅ Nota guardada');
+            }
+        }
+
+        function addReminderFor(subject, day) {
+            openModal();
+            setTimeout(() => {
+                const subjectSelect = document.getElementById('reminder-subject');
+                if (subjectSelect) {
+                    for (let opt of subjectSelect.options) {
+                        if (opt.value === subject) {
+                            opt.selected = true;
+                            break;
+                        }
+                    }
+                }
+            }, 100);
+        }
+
+        function addReminderFromClass() {
+            if (!currentClassContext) return;
+            closeClassModal();
+            addReminderFor(currentClassContext.class.subject, currentClassContext.day);
+        }
+
+        function populateAttendanceSubjectFilter() {
+            const picker = document.getElementById('attendance-subject-picker');
+            if (picker) {
+                picker.innerHTML = subjectsCatalog.map(subject =>
+                    `<option value="${subject}" ${subject === currentAttendanceSubject ? 'selected' : ''}>${subject}</option>`
+                ).join('');
+            }
+        }
+
+        // Settings: Subjects management
+        function renderSubjectsList() {
+            const listHTML = subjectsCatalog.map((subject, idx) => `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1; font-weight: 600; font-size: 13px;">${subject}</div>
+                    <button onclick="deleteSubject(${idx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer; font-weight: 500;">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+            
+            document.getElementById('subjects-list').innerHTML = listHTML || '<div style="text-align: center; color: #999; padding: 20px;">No hay materias. Agrega la primera abajo.</div>';
+        }
+
+        function addSubject() {
+            const name = document.getElementById('new-subject-name').value.trim();
+            if (!name) {
+                alert('Por favor ingresa el nombre de la materia');
+                return;
+            }
+            if (subjectsCatalog.includes(name)) {
+                alert('Esta materia ya existe');
+                return;
+            }
+            subjectsCatalog.push(name);
+            localStorage.setItem('subjectsCatalog', JSON.stringify(subjectsCatalog));
+            document.getElementById('new-subject-name').value = '';
+            renderSubjectsList();
+            alert('✅ Materia agregada');
+        }
+
+        function deleteSubject(idx) {
+            const subject = subjectsCatalog[idx];
+            if (confirm(`¿Eliminar "${subject}" del catálogo?`)) {
+                subjectsCatalog.splice(idx, 1);
+                localStorage.setItem('subjectsCatalog', JSON.stringify(subjectsCatalog));
+                renderSubjectsList();
+                alert('✅ Materia eliminada');
+            }
+        }
+
+        // Settings: Teachers management
+        function renderTeachersList() {
+            const listHTML = teachersCatalog.map((teacher, idx) => `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1; font-weight: 600; font-size: 13px;">👨‍🏫 ${teacher}</div>
+                    <button onclick="deleteTeacher(${idx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer; font-weight: 500;">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+            
+            document.getElementById('teachers-list').innerHTML = listHTML || '<div style="text-align: center; color: #999; padding: 20px;">No hay docentes. Agrega el primero abajo.</div>';
+        }
+
+        function addTeacher() {
+            const name = document.getElementById('new-teacher-name').value.trim();
+            if (!name) {
+                alert('Por favor ingresa el nombre del docente');
+                return;
+            }
+            if (teachersCatalog.includes(name)) {
+                alert('Este docente ya existe');
+                return;
+            }
+            teachersCatalog.push(name);
+            localStorage.setItem('teachersCatalog', JSON.stringify(teachersCatalog));
+            document.getElementById('new-teacher-name').value = '';
+            renderTeachersList();
+            alert('✅ Docente agregado');
+        }
+
+        function deleteTeacher(idx) {
+            const teacher = teachersCatalog[idx];
+            if (confirm(`¿Eliminar "${teacher}" del catálogo?`)) {
+                teachersCatalog.splice(idx, 1);
+                localStorage.setItem('teachersCatalog', JSON.stringify(teachersCatalog));
+                renderTeachersList();
+                alert('✅ Docente eliminado');
+            }
+        }
+
+        // Settings: Schedule editing
+        function loadDayForEditing() {
+            const day = document.getElementById('settings-day-select').value;
+            const schedule = customSchedule || scheduleData;
+            const classes = schedule[day] || [];
+            
+            const container = document.getElementById('settings-classes-list');
+            
+            if (classes.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">No hay clases para este día</div>';
+                return;
+            }
+            
+            container.innerHTML = classes.map((cls, idx) => `
+                <div style="background: ${cls.isBreak ? '#FFF9E6' : 'white'}; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 3px;">${cls.subject}</div>
+                            <div style="font-size: 12px; color: #666;">⏰ ${cls.time} | ${cls.period}</div>
+                            ${cls.teacher ? `<div style="font-size: 12px; color: #666;">👨‍🏫 ${cls.teacher}</div>` : ''}
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="editClass('${day}', ${idx})" style="padding: 6px 12px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 12px; cursor: pointer; font-weight: 500;">
+                                ✏️
+                            </button>
+                            <button onclick="deleteClass('${day}', ${idx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer; font-weight: 500;">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function populateSubjectSelect() {
+            const select = document.getElementById('edit-subject');
+            if (select) {
+                select.innerHTML = subjectsCatalog.map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+        }
+
+        function populateTeacherSelect() {
+            const select = document.getElementById('edit-teacher');
+            if (select) {
+                select.innerHTML = teachersCatalog.map(t => `<option value="${t}">${t}</option>`).join('');
+            }
+        }
+
+        function editClass(day, idx) {
+            editingDay = day;
+            editingClassIndex = idx;
+            
+            const schedule = customSchedule || scheduleData;
+            const cls = schedule[day][idx];
+            
+            document.getElementById('edit-day').value = day;
+            
+            populatePeriodSelect();
+            populateTimeSlotSelect();
+            populateSubjectSelect();
+            populateTeacherSelect();
+            
+            document.getElementById('edit-period').value = cls.period;
+            document.getElementById('edit-time-slot').value = cls.time;
+            document.getElementById('edit-subject').value = cls.subject;
+            document.getElementById('edit-teacher').value = cls.teacher;
+            document.getElementById('edit-is-break').checked = cls.isBreak || false;
+            
+            document.getElementById('edit-class-modal').classList.add('active');
+        }
+
+        function closeEditClass() {
+            document.getElementById('edit-class-modal').classList.remove('active');
+            editingClassIndex = null;
+            editingDay = null;
+        }
+
+        function saveEditedClass() {
+            if (!customSchedule) {
+                customSchedule = JSON.parse(JSON.stringify(scheduleData));
+            }
+            
+            const day = document.getElementById('edit-day').value;
+            const isBreak = document.getElementById('edit-is-break').checked;
+            
+            const classData = {
+                time: document.getElementById('edit-time-slot').value,
+                subject: isBreak ? 'RECREO' : document.getElementById('edit-subject').value,
+                teacher: isBreak ? '' : document.getElementById('edit-teacher').value,
+                period: document.getElementById('edit-period').value,
+                isBreak: isBreak
+            };
+            
+            if (editingClassIndex !== null && editingDay !== null) {
+                // If the day changed, move the class
+                if (editingDay !== day) {
+                    customSchedule[editingDay].splice(editingClassIndex, 1);
+                    if (!customSchedule[day]) customSchedule[day] = [];
+                    customSchedule[day].push(classData);
+                } else {
+                    customSchedule[day][editingClassIndex] = classData;
+                }
+            }
+            
+            localStorage.setItem('customSchedule', JSON.stringify(customSchedule));
+            
+            closeEditClass();
+            loadDayForEditing();
+            renderSchedule();
+            renderDayTabs();
+            
+            alert('✅ Clase actualizada');
+        }
+
+        function addNewClass() {
+            const day = document.getElementById('settings-day-select').value;
+            
+            if (!customSchedule) {
+                customSchedule = JSON.parse(JSON.stringify(scheduleData));
+            }
+            
+            if (!customSchedule[day]) {
+                customSchedule[day] = [];
+            }
+            
+            editingDay = day;
+            editingClassIndex = customSchedule[day].length;
+            
+            // Add a blank class
+            customSchedule[day].push({
+                time: timeSlotsCatalog[0] || '8:00 - 9:00',
+                subject: subjectsCatalog[0] || 'Nueva Materia',
+                teacher: teachersCatalog[0] || 'Docente',
+                period: periodsCatalog[0] || '1er periodo',
+                isBreak: false
+            });
+            
+            localStorage.setItem('customSchedule', JSON.stringify(customSchedule));
+            
+            // Open edit modal for the new class
+            editClass(day, editingClassIndex);
+            loadDayForEditing();
+        }
+
+        function deleteClass(day, idx) {
+            if (!confirm('¿Eliminar esta clase?')) return;
+            
+            if (!customSchedule) {
+                customSchedule = JSON.parse(JSON.stringify(scheduleData));
+            }
+            
+            customSchedule[day].splice(idx, 1);
+            localStorage.setItem('customSchedule', JSON.stringify(customSchedule));
+            
+            loadDayForEditing();
+            renderSchedule();
+            
+            alert('✅ Clase eliminada');
+        }
+
+        function resetSchedule() {
+            if (confirm('⚠️ ¿Restaurar el horario original?\n\nEsto eliminará todos los cambios que hayas hecho al horario.')) {
+                customSchedule = null;
+                localStorage.removeItem('customSchedule');
+                loadDayForEditing();
+                renderSchedule();
+                renderDayTabs();
+                alert('✅ Horario restaurado al original');
+            }
+        }
+
+        function toggleBreakFields() {
+            const isBreak = document.getElementById('edit-is-break').checked;
+            const subjectSelect = document.getElementById('edit-subject');
+            const teacherSelect = document.getElementById('edit-teacher');
+            if (subjectSelect) subjectSelect.disabled = isBreak;
+            if (teacherSelect) teacherSelect.disabled = isBreak;
+        }
+
+        function openQuickAddSubject() {
+            const name = prompt('Nombre de la nueva materia:');
+            if (name && name.trim()) {
+                if (subjectsCatalog.includes(name.trim())) {
+                    alert('Esta materia ya existe');
+                    return;
+                }
+                subjectsCatalog.push(name.trim());
+                localStorage.setItem('subjectsCatalog', JSON.stringify(subjectsCatalog));
+                populateSubjectSelect();
+                document.getElementById('edit-subject').value = name.trim();
+                alert('✅ Materia agregada');
+            }
+        }
+
+        function openQuickAddTeacher() {
+            const name = prompt('Nombre del nuevo docente:');
+            if (name && name.trim()) {
+                if (teachersCatalog.includes(name.trim())) {
+                    alert('Este docente ya existe');
+                    return;
+                }
+                teachersCatalog.push(name.trim());
+                localStorage.setItem('teachersCatalog', JSON.stringify(teachersCatalog));
+                populateTeacherSelect();
+                document.getElementById('edit-teacher').value = name.trim();
+                alert('✅ Docente agregado');
+            }
+        }
+
+        function openQuickAddTimeSlot() {
+            const start = prompt('Hora de inicio (HH:MM):');
+            const end = prompt('Hora de fin (HH:MM):');
+            if (start && end) {
+                const slot = `${start.trim()} - ${end.trim()}`;
+                if (timeSlotsCatalog.includes(slot)) {
+                    alert('Este horario ya existe');
+                    return;
+                }
+                timeSlotsCatalog.push(slot);
+                localStorage.setItem('timeSlotsCatalog', JSON.stringify(timeSlotsCatalog));
+                populateTimeSlotSelect();
+                document.getElementById('edit-time-slot').value = slot;
+                alert('✅ Horario agregado');
+            }
+        }
+
+        // Grades / Evaluation functions
+        function openGradesView() {
+            document.getElementById('grades-modal').classList.add('active');
+            const select = document.getElementById('grades-subject-filter');
+            select.innerHTML = subjectsCatalog.map(s => `<option value="${s}">${s}</option>`).join('');
+            updateGradesView();
+        }
+
+        function closeGradesView() {
+            document.getElementById('grades-modal').classList.remove('active');
+        }
+
+        function updateGradesView() {
+            const subject = document.getElementById('grades-subject-filter').value;
+            
+            // Render criteria summary
+            const criteriaSummary = document.getElementById('criteria-summary');
+            const totalPct = evaluationCriteria.reduce((sum, c) => sum + c.percentage, 0);
+            criteriaSummary.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 8px;">📊 Criterios de Evaluación (${totalPct}%)</div>
+                ${evaluationCriteria.map(c => `
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 3px;">
+                        <span>${c.name}</span>
+                        <span style="font-weight: 600;">${c.percentage}% (máx: ${c.maxScore})</span>
+                    </div>
+                `).join('')}
+            `;
+            
+            // Render grades table
+            const container = document.getElementById('grades-table-container');
+            
+            if (studentsList.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">No hay estudiantes registrados</div>';
+                return;
+            }
+            
+            let tableHTML = `<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Estudiante</th>
+                        ${evaluationCriteria.map(c => `<th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">${c.name}<br><span style="font-size: 10px; color: #999;">(${c.percentage}%)</span></th>`).join('')}
+                        <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd; background: #E8F5E9;">Final</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            studentsList.forEach(student => {
+                const key = `${subject}|${student}`;
+                const grades = studentGrades[key] || {};
+                
+                let finalScore = 0;
+                
+                tableHTML += `<tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;">${student}</td>`;
+                
+                evaluationCriteria.forEach(c => {
+                    const grade = grades[c.id] || '';
+                    const numGrade = parseFloat(grade) || 0;
+                    finalScore += (numGrade / c.maxScore) * c.percentage;
+                    
+                    tableHTML += `<td style="padding: 5px; text-align: center; border-bottom: 1px solid #eee;">
+                        <input type="number" value="${grade}" min="0" max="${c.maxScore}" 
+                               onchange="updateGrade('${subject.replace(/'/g, "\\'")}', '${student.replace(/'/g, "\\'")}', '${c.id}', this.value)"
+                               style="width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 5px; text-align: center; font-size: 13px;">
+                    </td>`;
+                });
+                
+                tableHTML += `<td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee; font-weight: 700; background: #E8F5E9; color: ${finalScore >= 51 ? '#2E7D32' : '#C62828'};">
+                    ${finalScore.toFixed(1)}
+                </td></tr>`;
+            });
+            
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+
+        function updateGrade(subject, student, criteriaId, value) {
+            const key = `${subject}|${student}`;
+            if (!studentGrades[key]) {
+                studentGrades[key] = {};
+            }
+            studentGrades[key][criteriaId] = value;
+            localStorage.setItem('studentGrades', JSON.stringify(studentGrades));
+            updateGradesView();
+        }
+
+        function openCriteriaSettings() {
+            document.getElementById('criteria-settings-modal').classList.add('active');
+            renderCriteriaList();
+        }
+
+        function closeCriteriaSettings() {
+            document.getElementById('criteria-settings-modal').classList.remove('active');
+            updateGradesView();
+        }
+
+        function renderCriteriaList() {
+            const container = document.getElementById('criteria-list');
+            const totalPct = evaluationCriteria.reduce((sum, c) => sum + c.percentage, 0);
+            
+            container.innerHTML = evaluationCriteria.map((c, idx) => `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600;">${c.name}</div>
+                        <div style="font-size: 12px; color: #666;">${c.percentage}% | Máx: ${c.maxScore}</div>
+                    </div>
+                    <button onclick="deleteCriteria(${idx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer;">🗑️</button>
+                </div>
+            `).join('');
+            
+            document.getElementById('total-percentage').innerHTML = `Total: ${totalPct}% ${totalPct === 100 ? '✅' : '⚠️ Debe sumar 100%'}`;
+            document.getElementById('total-percentage').style.background = totalPct === 100 ? '#E8F5E9' : '#FFF3E0';
+            document.getElementById('total-percentage').style.color = totalPct === 100 ? '#2E7D32' : '#E65100';
+        }
+
+        function addCriteria() {
+            const name = document.getElementById('new-criteria-name').value.trim();
+            const percentage = parseInt(document.getElementById('new-criteria-percentage').value);
+            const maxScore = parseInt(document.getElementById('new-criteria-max').value) || 100;
+            
+            if (!name) {
+                alert('Por favor ingresa el nombre del criterio');
+                return;
+            }
+            if (!percentage || percentage <= 0) {
+                alert('Por favor ingresa un porcentaje válido');
+                return;
+            }
+            
+            const id = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            
+            evaluationCriteria.push({ id, name, percentage, maxScore });
+            localStorage.setItem('evaluationCriteria', JSON.stringify(evaluationCriteria));
+            
+            document.getElementById('new-criteria-name').value = '';
+            document.getElementById('new-criteria-percentage').value = '';
+            
+            renderCriteriaList();
+            alert('✅ Criterio agregado');
+        }
+
+        function deleteCriteria(idx) {
+            if (confirm('¿Eliminar este criterio?')) {
+                evaluationCriteria.splice(idx, 1);
+                localStorage.setItem('evaluationCriteria', JSON.stringify(evaluationCriteria));
+                renderCriteriaList();
+            }
+        }
+
+        function exportGradesToExcel() {
+            if (typeof XLSX === 'undefined') {
+                alert('❌ La librería de Excel no está cargada. Verifica tu conexión a internet.');
+                return;
+            }
+            
+            const wb = XLSX.utils.book_new();
+            
+            subjectsCatalog.forEach(subject => {
+                const sheetData = [
+                    ['Estudiante', ...evaluationCriteria.map(c => `${c.name} (${c.percentage}%)`), 'Nota Final']
+                ];
+                
+                studentsList.forEach(student => {
+                    const key = `${subject}|${student}`;
+                    const grades = studentGrades[key] || {};
+                    const row = [student];
+                    let finalScore = 0;
+                    
+                    evaluationCriteria.forEach(c => {
+                        const grade = parseFloat(grades[c.id]) || 0;
+                        finalScore += (grade / c.maxScore) * c.percentage;
+                        row.push(grade);
+                    });
+                    
+                    row.push(parseFloat(finalScore.toFixed(1)));
+                    sheetData.push(row);
+                });
+                
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                XLSX.utils.book_append_sheet(wb, ws, subject.substring(0, 30));
+            });
+            
+            XLSX.writeFile(wb, 'Calificaciones_' + new Date().toISOString().split('T')[0] + '.xlsx');
+            alert('✅ Calificaciones exportadas a Excel');
+        }
+
         // BACKUP AND RESTORE FUNCTIONS
         
         function exportBackup() {
@@ -3626,12 +4263,14 @@
 
         // Initialize everything
         loadTheme(); // Load theme first
+        setTodayDate(); // Set today as selected day
         updateWeekDisplay(); // Show week range
         renderDayTabs(); // Render day tabs with dates
         renderSchedule();
         initNavigation();
         updateCalendar();
         renderReminders();
+        populateCategorySelect();
 
         // Initialize notifications
         (async function() {
