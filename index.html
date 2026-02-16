@@ -1570,6 +1570,52 @@
             'Lic. Marlene Mamani',
             'Lic Angela Uruchi'
         ]));
+// === NUEVO: Mapear materia → docente automáticamente ===
+const subjectTeacherMap = {
+    "RAZONAMIENTO LÓGICO MATEMÁTICO": "Docente Tres Matematica",
+    "HISTORIA CRÍTICA DE LA EDUCACIÓN BOLIVIANA": "Docente Uno Sociales",
+    "CÁLCULO APLICADA A LA TECNOLOGÍA": "Lic. Ivan Wily Copa",
+    "GEOMETRÍA EUCLIDIANA Y GEOMETRÍA DE NUESTRAS CULTURAS": "Docente Tres Matematica",
+    "LO: IDENTIDAD CULTURAL CON LOS PRINCIPIOS Y VALORES": "Lic. Hernan Mamani",
+    "FUNDAMENTOS DE LA ARITMÉTICA Y ÁLGEBRA": "Lic. Eduardo Mercado",
+    "MODELO EDUCATIVO SOCIOCOMUNITARIO PRODUCTIVO": "Docente Dos Musica",
+    "TALLER I INVESTIGACIÓN EDUCATIVA Y PRODUCCIÓN DE CONOCIMIENTOS": "Lic. Marlene Mamani",
+    "PEDAGOGÍAS EN LOS PROCESOS DE APRENDIZAJE": "Lic Angela Uruchi"
+};
+
+// Función para asignar docente automáticamente
+function getTeacherForSubject(subject) {
+    return subjectTeacherMap[subject] || "Docente no asignado";
+}
+function saveClass() {
+    // Crear objeto de clase con materia y docente automático
+    const newClass = {
+        time: selectedTimeSlot,                // hora seleccionada
+        subject: selectedSubject,              // materia seleccionada
+        teacher: getTeacherForSubject(selectedSubject), // docente asignado automáticamente
+        period: selectedPeriod,                // periodo seleccionado
+        isBreak: false                          // marcar si es recreo o no
+    };
+
+    // Si estamos editando una clase existente
+    if (editingClassIndex !== null && editingDay === selectedDay) {
+        scheduleData[selectedDay][editingClassIndex] = newClass;
+    } else {
+        // Si es nueva clase
+        if (!scheduleData[selectedDay]) scheduleData[selectedDay] = [];
+        scheduleData[selectedDay].push(newClass);
+    }
+
+    // Guardar el horario actualizado en localStorage
+    localStorage.setItem('customSchedule', JSON.stringify(scheduleData));
+
+    // Limpiar variables temporales
+    editingClassIndex = null;
+    editingDay = null;
+
+    // Refrescar la vista del horario
+    renderSchedule();
+}
 
         // Load periods catalog
         let periodsCatalog = JSON.parse(localStorage.getItem('periodsCatalog') || JSON.stringify([
