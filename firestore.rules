@@ -15,6 +15,8 @@ service cloud.firestore {
 
     // Reglas para colección de usuarios
     match /users/{userId} {
+      // Permitir que un usuario cree su propio documento al registrarse
+      allow create: if request.auth.uid == userId;
       // El usuario puede leer y escribir solo sus propios datos
       allow read, write: if isSignedIn() && isOwner(userId);
 
