@@ -37,12 +37,23 @@
             --border: #ddd;
         }
 
+        body.dark-mode {
+            --primary: #00A86B;
+            --secondary: #FFD700;
+            --red: #FF6B6B;
+            --bg: #121212;
+            --card: #1E1E1E;
+            --text: #E0E0E0;
+            --border: #333;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
             overflow-x: hidden;
             padding-bottom: 70px;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         /* Header */
@@ -103,20 +114,47 @@
 
         .tab {
             flex: 1;
-            padding: 15px;
+            padding: 10px 5px;
             text-align: center;
             border: none;
             background: white;
             cursor: pointer;
             border-bottom: 3px solid transparent;
-            font-size: 14px;
+            font-size: 13px;
             transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .tab-day {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .tab-date {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .tab.holiday {
+            background: linear-gradient(to bottom, #FFF3E0, #FFE0B2);
+            color: #E65100;
+        }
+
+        .tab.holiday .tab-day::after {
+            content: ' 🎉';
+            font-size: 10px;
         }
 
         .tab.active {
             border-bottom-color: var(--primary);
             color: var(--primary);
             font-weight: 600;
+        }
+
+        .tab.active.holiday {
+            border-bottom-color: #FF9800;
         }
 
         /* Content */
@@ -426,6 +464,20 @@
             border-radius: 50%;
         }
 
+        .day.holiday {
+            background: linear-gradient(135deg, #FF9800, #FFA726);
+            color: white;
+            font-weight: 700;
+        }
+
+        .day.holiday::before {
+            content: '🎉';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
+
         /* Reminders List */
         .reminder-item {
             background: white;
@@ -721,9 +773,6 @@
         <div class="subtitle">1RO MATEMÁTICA</div>
     </div>
 
-    <!-- Settings Button -->
-    <button class="settings-btn" onclick="openSettings()" title="Configurar Horario">⚙️</button>
-
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
         <button class="nav-item active" data-view="horario">
@@ -742,6 +791,10 @@
             <div class="icon">✅</div>
             <div>Asistencia</div>
         </button>
+        <button class="nav-item" data-view="config">
+            <div class="icon">⚙️</div>
+            <div>Config</div>
+        </button>
     </div>
 
     <!-- Content Container -->
@@ -754,12 +807,8 @@
                 <button onclick="changeWeek(1)">►</button>
             </div>
             
-            <div class="tabs">
-                <button class="tab active" data-day="lunes">Lun</button>
-                <button class="tab" data-day="martes">Mar</button>
-                <button class="tab" data-day="miercoles">Mié</button>
-                <button class="tab" data-day="jueves">Jue</button>
-                <button class="tab" data-day="viernes">Vie</button>
+            <div class="tabs" id="day-tabs">
+                <!-- Tabs will be generated dynamically with dates -->
             </div>
 
             <div class="content" id="schedule-content"></div>
@@ -846,9 +895,124 @@
                 <button onclick="openAttendanceHistory()" style="width: 100%; padding: 12px; background: white; border: 2px solid var(--primary); color: var(--primary); border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 10px;">
                     📊 Ver Historial de Asistencia
                 </button>
-                <button onclick="exportToExcel()" style="width: 100%; padding: 12px; background: #E8F5E9; color: #2E7D32; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                <button onclick="exportToExcel()" style="width: 100%; padding: 12px; background: #E8F5E9; color: #2E7D32; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 10px;">
                     📥 Exportar a Excel
                 </button>
+                <div style="background: #FFF3E0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="font-weight: 600; margin-bottom: 10px; color: #E65100;">💾 Respaldo de Datos</div>
+                    <button onclick="exportBackup()" style="width: 100%; padding: 10px; background: #2196F3; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 8px;">
+                        💾 Crear Backup
+                    </button>
+                    <button onclick="openImportBackup()" style="width: 100%; padding: 10px; background: #FF9800; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        📂 Restaurar Backup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config View -->
+    <div class="tab-content" id="config-view">
+        <div class="content">
+            <!-- Academic Calendar Config -->
+            <div class="card">
+                <h2 style="margin-bottom: 15px;">📅 Configuración Académica</h2>
+                
+                <div class="form-group">
+                    <label>Fecha de Inicio de Clases</label>
+                    <input type="date" id="academic-start-date" value="2026-02-09">
+                </div>
+                
+                <div class="form-group">
+                    <label>Fecha de Fin de Clases</label>
+                    <input type="date" id="academic-end-date" value="2026-11-30">
+                </div>
+                
+                <div class="form-group">
+                    <label>Inicio Vacaciones de Medio Año</label>
+                    <input type="date" id="midyear-start" value="2026-07-01">
+                </div>
+                
+                <div class="form-group">
+                    <label>Fin Vacaciones de Medio Año</label>
+                    <input type="date" id="midyear-end" value="2026-07-31">
+                </div>
+                
+                <button onclick="saveAcademicConfig()" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    💾 Guardar Configuración
+                </button>
+            </div>
+
+            <!-- Holidays Management -->
+            <div class="card">
+                <h2 style="margin-bottom: 15px;">🎉 Gestión de Feriados</h2>
+                <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                    💡 También puedes tocar cualquier fecha en el Calendario para marcarla como feriado
+                </p>
+                
+                <div id="holidays-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+                
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                    <h3 style="font-size: 14px; margin-bottom: 10px;">➕ Agregar Feriado</h3>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="new-holiday-date">
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del Feriado</label>
+                        <input type="text" id="new-holiday-name" placeholder="Ej: Día de la Independencia">
+                    </div>
+                    <button onclick="addHoliday()" style="width: 100%; padding: 10px; background: #FF9800; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        ➕ Agregar Feriado
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Settings Link -->
+            <div class="card">
+                <h2 style="margin-bottom: 15px;">⚙️ Configuración del Horario</h2>
+                <button onclick="openSettings()" style="width: 100%; padding: 12px; background: #2196F3; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    📝 Editar Horario, Materias y Docentes
+                </button>
+            </div>
+
+            <!-- Backup Section -->
+            <div style="background: #FFF3E0; padding: 15px; border-radius: 10px; margin-top: 15px;">
+                <h3 style="margin-bottom: 10px; color: #E65100;">💾 Respaldo de Datos</h3>
+                <button onclick="exportBackup()" style="width: 100%; padding: 10px; background: #2196F3; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 8px;">
+                    💾 Crear Backup
+                </button>
+                <button onclick="openImportBackup()" style="width: 100%; padding: 10px; background: #FF9800; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    📂 Restaurar Backup
+                </button>
+            </div>
+
+            <!-- Notification Settings -->
+            <div style="background: #E8F5E9; padding: 15px; border-radius: 10px; margin-top: 15px;">
+                <h3 style="margin-bottom: 10px; color: #2E7D32;">🔔 Notificaciones</h3>
+                <div id="notification-status" style="font-size: 13px; margin-bottom: 10px; padding: 10px; background: white; border-radius: 5px;"></div>
+                <button onclick="enableNotifications()" style="width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    🔔 Habilitar Notificaciones
+                </button>
+                <p style="font-size: 11px; color: #666; margin-top: 8px; line-height: 1.4;">
+                    💡 Las notificaciones te avisarán de tus recordatorios en tiempo real
+                </p>
+            </div>
+
+            <!-- Dark Mode Settings -->
+            <div style="background: #E8EAF6; padding: 15px; border-radius: 10px; margin-top: 15px;">
+                <h3 style="margin-bottom: 10px; color: #3F51B5;">🌙 Modo de Visualización</h3>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="setTheme('light')" id="theme-light-btn" style="flex: 1; padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        ☀️ Día
+                    </button>
+                    <button onclick="setTheme('dark')" id="theme-dark-btn" style="flex: 1; padding: 12px; background: #263238; color: white; border: 2px solid #263238; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        🌙 Noche
+                    </button>
+                </div>
+                <p style="font-size: 11px; color: #666; margin-top: 8px; line-height: 1.4;">
+                    💡 Elige el modo que sea más cómodo para tus ojos
+                </p>
             </div>
         </div>
     </div>
@@ -1318,6 +1482,12 @@
                 { time: "12:15 - 12:30", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
                 { time: "12:30 - 13:30", subject: "PEDAGOGÍAS EN LOS PROCESOS DE APRENDIZAJE", teacher: "Lic. Hernan Mamani", period: "5to periodo" },
                 { time: "13:30 - 14:30", subject: "PEDAGOGÍAS EN LOS PROCESOS DE APRENDIZAJE", teacher: "Lic Angela Uruchi", period: "6to periodo" }
+            ],
+            sabado: [
+                // Empty by default - can be configured for weekend activities
+            ],
+            domingo: [
+                // Empty by default - can be configured for weekend activities  
             ]
         };
 
@@ -1414,6 +1584,128 @@
         let currentAttendanceSubject = null;
         let currentSessionAttendance = {};
 
+        // Academic Calendar Configuration
+        let academicConfig = JSON.parse(localStorage.getItem('academicConfig') || JSON.stringify({
+            startDate: '2026-02-09', // Inicio de clases - DÍA #1
+            endDate: '2026-12-02',   // Finalización del desarrollo curricular
+            midYearBreakStart: '2026-07-06', // Descanso pedagógico (10 días hábiles en 2do trimestre)
+            midYearBreakEnd: '2026-07-17',
+            holidays: [
+                // FERIADOS ACADÉMICOS 2026 - Solo los que SÍ se acatan en educación
+                // Según Resolución Ministerial 0001/2026 del Ministerio de Educación
+                { date: '2026-02-16', name: 'Carnaval' },
+                { date: '2026-02-17', name: 'Carnaval' },
+                { date: '2026-04-03', name: 'Viernes Santo' },
+                { date: '2026-05-01', name: 'Día del Trabajo' },
+                { date: '2026-06-04', name: 'Corpus Christi' },
+                { date: '2026-06-22', name: 'Año Nuevo Andino Amazónico' },
+                { date: '2026-08-06', name: 'Día de la Independencia' },
+                { date: '2026-11-02', name: 'Día de Todos los Difuntos' }
+                // NOTA: El Ministerio de Educación NO suspende clases por:
+                // - Año Nuevo (vacaciones de fin de año)
+                // - Estado Plurinacional (no es feriado escolar)
+                // - Feriados adicionales creados para turismo
+                // - Navidad (vacaciones de fin de año)
+            ]
+        }));
+
+        // Calculate actual date for a given day of week and week offset
+        function getActualDateForDay(dayName) {
+            const dayMap = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'domingo': 0 };
+            const targetDayOfWeek = dayMap[dayName];
+            
+            // Start from TODAY and apply week offset
+            const today = new Date();
+            
+            // Get Monday of current week
+            const currentDay = today.getDay();
+            const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // If Sunday, 6 days from Monday
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - daysFromMonday);
+            monday.setHours(0, 0, 0, 0);
+            
+            // Apply week offset
+            monday.setDate(monday.getDate() + (currentWeekOffset * 7));
+            
+            // Calculate target date from this Monday
+            const resultDate = new Date(monday);
+            if (targetDayOfWeek === 0) {
+                // Sunday is 6 days after Monday
+                resultDate.setDate(monday.getDate() + 6);
+            } else {
+                // Other days: Monday=1 is +0, Tuesday=2 is +1, etc.
+                resultDate.setDate(monday.getDate() + (targetDayOfWeek - 1));
+            }
+            
+            return resultDate;
+        }
+
+        // Calculate class day number (only counts actual class days)
+        function getClassDayNumber(date) {
+            const startDate = new Date(academicConfig.startDate);
+            const endDate = new Date(academicConfig.endDate);
+            
+            // If before start or after end, return null
+            if (date < startDate || date > endDate) {
+                return null;
+            }
+            
+            let dayCount = 0;
+            let currentDate = new Date(startDate);
+            
+            while (currentDate <= date) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                const dayOfWeek = currentDate.getDay();
+                
+                // Check if it's a class day (not holiday, not vacation, not weekend unless marked)
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                const isHoliday = academicConfig.holidays.some(h => h.date === dateStr);
+                const isVacation = dateStr >= academicConfig.midYearBreakStart && dateStr <= academicConfig.midYearBreakEnd;
+                const hasWeekendActivity = academicConfig.weekendActivities && academicConfig.weekendActivities.some(a => a.date === dateStr);
+                
+                // Count as class day if:
+                // - Not a holiday
+                // - Not in vacation
+                // - Either weekday OR weekend with activity
+                if (!isHoliday && !isVacation && (!isWeekend || hasWeekendActivity)) {
+                    dayCount++;
+                }
+                
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            return dayCount;
+        }
+
+        function isDateExcluded(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            
+            // Check if it's a holiday
+            if (academicConfig.holidays.some(h => h.date === dateStr)) {
+                return true;
+            }
+            
+            // Check if it's in mid-year break
+            if (dateStr >= academicConfig.midYearBreakStart && dateStr <= academicConfig.midYearBreakEnd) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        function isWeekend(date) {
+            const day = date.getDay();
+            return day === 0 || day === 6; // Sunday or Saturday
+        }
+
+        function hasWeekendActivity(date) {
+            if (!academicConfig.weekendActivities) {
+                academicConfig.weekendActivities = [];
+            }
+            const dateStr = date.toISOString().split('T')[0];
+            return academicConfig.weekendActivities.some(a => a.date === dateStr);
+        }
+
         // Evaluation criteria
         let evaluationCriteria = JSON.parse(localStorage.getItem('evaluationCriteria') || JSON.stringify([
             { id: 'asistencia', name: 'Asistencia', percentage: 20, maxScore: 100 },
@@ -1473,21 +1765,98 @@
         function changeWeek(offset) {
             currentWeekOffset += offset;
             updateWeekDisplay();
+            renderDayTabs(); // Update tabs with new dates
+            renderSchedule(); // Update schedule
         }
 
         function updateWeekDisplay() {
             const today = new Date();
-            today.setDate(today.getDate() + (currentWeekOffset * 7));
             
+            // Get current Monday
+            const currentDay = today.getDay();
+            const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
             const monday = new Date(today);
-            monday.setDate(today.getDate() - today.getDay() + 1);
+            monday.setDate(today.getDate() - daysFromMonday);
+            monday.setHours(0, 0, 0, 0);
             
-            const friday = new Date(monday);
-            friday.setDate(monday.getDate() + 4);
+            // Apply week offset
+            monday.setDate(monday.getDate() + (currentWeekOffset * 7));
             
-            const options = { day: 'numeric', month: 'short' };
-            document.getElementById('current-week').textContent = 
-                `${monday.toLocaleDateString('es-BO', options)} - ${friday.toLocaleDateString('es-BO', options)}`;
+            // Sunday is 6 days after Monday
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            // Check if they're in the same year
+            const mondayYear = monday.getFullYear();
+            const sundayYear = sunday.getFullYear();
+            
+            let dateRange;
+            if (mondayYear === sundayYear) {
+                // Same year: "16 feb - 22 feb 2026"
+                const mondayStr = monday.toLocaleDateString('es-BO', { day: 'numeric', month: 'short' });
+                const sundayStr = sunday.toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+                dateRange = `${mondayStr} - ${sundayStr}`;
+            } else {
+                // Different years: "30 dic 2025 - 5 ene 2026"
+                const mondayStr = monday.toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+                const sundayStr = sunday.toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+                dateRange = `${mondayStr} - ${sundayStr}`;
+            }
+            
+            document.getElementById('current-week').textContent = dateRange;
+        }
+
+        function renderDayTabs() {
+            const tabsContainer = document.getElementById('day-tabs');
+            if (!tabsContainer) return;
+            
+            const days = [
+                { key: 'lunes', label: 'Lun' },
+                { key: 'martes', label: 'Mar' },
+                { key: 'miercoles', label: 'Mié' },
+                { key: 'jueves', label: 'Jue' },
+                { key: 'viernes', label: 'Vie' },
+                { key: 'sabado', label: 'Sáb' },
+                { key: 'domingo', label: 'Dom' }
+            ];
+            
+            tabsContainer.innerHTML = days.map(day => {
+                const date = getActualDateForDay(day.key);
+                const dateStr = date.toISOString().split('T')[0];
+                const dayNum = date.getDate();
+                const monthShort = date.toLocaleDateString('es-BO', { month: 'short' });
+                
+                // Check if holiday
+                const isHoliday = academicConfig.holidays.some(h => h.date === dateStr);
+                
+                // Special styling for weekend
+                let style = '';
+                if (day.key === 'sabado') {
+                    style = 'background: #FFF3E0;';
+                } else if (day.key === 'domingo') {
+                    style = 'background: #FFEBEE;';
+                }
+                
+                const isActive = selectedDay === day.key;
+                const holidayClass = isHoliday ? 'holiday' : '';
+                const activeClass = isActive ? 'active' : '';
+                
+                return `
+                    <button class="tab ${activeClass} ${holidayClass}" 
+                            data-day="${day.key}"
+                            style="${style}"
+                            onclick="changeDay('${day.key}')">
+                        <div class="tab-day">${day.label}</div>
+                        <div class="tab-date">${dayNum} ${monthShort}</div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function changeDay(day) {
+            selectedDay = day;
+            renderDayTabs();
+            renderSchedule();
         }
 
         function renderSchedule() {
@@ -1495,51 +1864,169 @@
             const schedule = customSchedule || scheduleData;
             const classes = schedule[selectedDay] || [];
             
-            // Get current time
+            // Get actual date being viewed
+            const actualDate = getActualDateForDay(selectedDay);
+            const viewingDateStr = actualDate.toISOString().split('T')[0];
+            const todayDateStr = new Date().toISOString().split('T')[0];
+            const isToday = viewingDateStr === todayDateStr;
+            
+            // Get current time (only relevant if viewing today)
             const now = new Date();
             const currentHours = now.getHours();
             const currentMinutes = now.getMinutes();
             const currentTimeValue = currentHours * 60 + currentMinutes;
             
-            // Check if today matches selected day
-            const today = new Date().getDay();
-            const dayMap = { 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes' };
-            const isToday = dayMap[today] === selectedDay;
+            // Check if viewing date is within academic period
+            const startDate = new Date(academicConfig.startDate);
+            startDate.setHours(0, 0, 0, 0);
+            const endDate = new Date(academicConfig.endDate);
+            endDate.setHours(0, 0, 0, 0);
+            const viewingDate = new Date(actualDate);
+            viewingDate.setHours(0, 0, 0, 0);
+            
+            const isBeforeAcademicStart = viewingDate < startDate;
+            const isAfterAcademicEnd = viewingDate > endDate;
+            
+            // Get day name in Spanish for display
+            const dayMap = { 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado', 0: 'domingo' };
+            const viewingDayOfWeek = actualDate.getDay(); // 0-6
+            const viewingDayName = dayMap[viewingDayOfWeek];
             
             // Add debug info banner
-            const dayIndexMap = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'jueves': 4, 'viernes': 5 };
+            const dayIndexMap = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'domingo': 0 };
             const selectedDayIndex = dayIndexMap[selectedDay];
-            const dayStatus = selectedDayIndex < today ? '✅ DÍA PASADO (todo tachado)' : 
-                             selectedDayIndex === today ? '🟢 DÍA ACTUAL (progreso en tiempo real)' :
-                             '⏳ DÍA FUTURO (todo sin tachar)';
+            
+            // Determine day status using ACTUAL DATES not day of week
+            const viewingDate = new Date(actualDate);
+            viewingDate.setHours(0, 0, 0, 0);
+            const todayDate = new Date();
+            todayDate.setHours(0, 0, 0, 0);
+            
+            let dayStatus;
+            if (viewingDate < todayDate) {
+                dayStatus = '✅ DÍA PASADO (todo tachado)';
+            } else if (viewingDate.getTime() === todayDate.getTime()) {
+                dayStatus = '🟢 DÍA ACTUAL (progreso en tiempo real)';
+            } else {
+                dayStatus = '⏳ DÍA FUTURO (todo sin tachar)';
+            }
+            
+            // Check if selected day is a holiday
+            const dateKey = actualDate.toISOString().split('T')[0];
+            const holiday = academicConfig.holidays.some(h => h.date === dateKey);
+            const isInMidYearBreak = dateKey >= academicConfig.midYearBreakStart && dateKey <= academicConfig.midYearBreakEnd;
+            
+            // Check if it's a weekend without activities
+            const dayOfWeek = actualDate.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const hasWeekendActivity = academicConfig.weekendActivities && 
+                                      academicConfig.weekendActivities.some(a => a.date === dateKey);
+            const isWeekendWithoutClasses = isWeekend && !hasWeekendActivity;
+            
+            // Get class day number (will be null for weekends without activities)
+            const classDayNumber = getClassDayNumber(actualDate);
+            const totalClassDays = getClassDayNumber(new Date(academicConfig.endDate));
+            
+            // Format complete date
+            const completeDateStr = actualDate.toLocaleDateString('es-BO', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            let holidayBanner = '';
+            if (holiday) {
+                const holidayInfo = academicConfig.holidays.find(h => h.date === dateKey);
+                holidayBanner = `
+                    <div style="background: linear-gradient(135deg, #FF9800, #FFA726); padding: 15px; border-radius: 10px; margin-bottom: 15px; color: white; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 5px;">🎉</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 5px;">${holidayInfo.name}</div>
+                        <div style="font-size: 13px; opacity: 0.9;">DÍA FERIADO - NO HAY CLASES</div>
+                        <div style="font-size: 12px; margin-top: 8px; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 5px;">
+                            📅 ${completeDateStr}
+                        </div>
+                    </div>
+                `;
+            } else if (isInMidYearBreak) {
+                holidayBanner = `
+                    <div style="background: linear-gradient(135deg, #00BCD4, #00ACC1); padding: 15px; border-radius: 10px; margin-bottom: 15px; color: white; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 5px;">🏖️</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 5px;">Vacaciones de Medio Año</div>
+                        <div style="font-size: 13px; opacity: 0.9;">DESCANSO - NO HAY CLASES</div>
+                        <div style="font-size: 12px; margin-top: 8px; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 5px;">
+                            📅 ${completeDateStr}
+                        </div>
+                    </div>
+                `;
+            } else if (isWeekendWithoutClasses) {
+                // Banner for weekend without classes
+                const dayName = selectedDay === 'sabado' ? 'SÁBADO' : 'DOMINGO';
+                holidayBanner = `
+                    <div style="background: linear-gradient(135deg, ${selectedDay === 'sabado' ? '#FF9800, #FFA726' : '#E91E63, #F06292'}); padding: 15px; border-radius: 10px; margin-bottom: 15px; color: white; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 5px;">${selectedDay === 'sabado' ? '🏖️' : '🌴'}</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 5px;">HOY ES ${dayName}</div>
+                        <div style="font-size: 13px; opacity: 0.9;">NO HAY CLASES PROGRAMADAS</div>
+                        <div style="font-size: 12px; margin-top: 8px; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 5px;">
+                            📅 ${completeDateStr}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add validation banner if outside academic period
+            let validationBanner = '';
+            if (isBeforeAcademicStart) {
+                validationBanner = `
+                    <div style="background: linear-gradient(135deg, #9E9E9E, #BDBDBD); padding: 15px; border-radius: 10px; margin-bottom: 15px; color: white; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 5px;">⏸️</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 5px;">ANTES DEL INICIO DE CLASES</div>
+                        <div style="font-size: 13px; opacity: 0.9;">Las clases inician el ${new Date(academicConfig.startDate).toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                    </div>
+                `;
+            } else if (isAfterAcademicEnd) {
+                validationBanner = `
+                    <div style="background: linear-gradient(135deg, #9E9E9E, #BDBDBD); padding: 15px; border-radius: 10px; margin-bottom: 15px; color: white; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 5px;">🏁</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 5px;">DESPUÉS DEL FIN DE CLASES</div>
+                        <div style="font-size: 13px; opacity: 0.9;">El período académico finalizó el ${new Date(academicConfig.endDate).toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                    </div>
+                `;
+            }
             
             const debugInfo = `
                 <div style="background: #E3F2FD; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 12px;">
                     <strong>🕐 Hora actual:</strong> ${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}<br>
-                    <strong>📅 Hoy es:</strong> ${dayMap[today] || 'Fin de semana'} (día ${today})<br>
-                    <strong>👀 Viendo:</strong> ${selectedDay} (día ${selectedDayIndex})<br>
+                    <strong>📅 Hoy es:</strong> ${isToday ? viewingDayName : new Date().toLocaleDateString('es-BO', { weekday: 'long' })} (${isToday ? 'Viendo HOY' : 'Viendo otra fecha'})<br>
+                    <strong>👀 Viendo:</strong> ${selectedDay.toUpperCase()}<br>
+                    <strong>📆 Fecha completa:</strong> ${completeDateStr}<br>
+                    ${!isWeekendWithoutClasses && !holiday && !isInMidYearBreak && !isBeforeAcademicStart && !isAfterAcademicEnd && classDayNumber ? `<strong>📚 Día de clases:</strong> #${classDayNumber} de ${totalClassDays || '~200'} días<br>` : ''}
+                    ${isWeekendWithoutClasses ? `<strong>📚 Fin de semana:</strong> NO HAY CLASES PROGRAMADAS<br>` : ''}
+                    ${holiday ? `<strong>🎉 Feriado:</strong> ${academicConfig.holidays.find(h => h.date === dateKey).name}<br>` : ''}
+                    ${isInMidYearBreak ? `<strong>🏖️ Vacaciones:</strong> DESCANSO DE MEDIO AÑO<br>` : ''}
+                    ${isBeforeAcademicStart ? `<strong>⏸️ Período académico:</strong> Aún no inicia<br>` : ''}
+                    ${isAfterAcademicEnd ? `<strong>🏁 Período académico:</strong> Ya finalizó<br>` : ''}
                     <strong>📊 Estado:</strong> ${dayStatus}
                 </div>
             `;
             
-            content.innerHTML = debugInfo + classes.map((cls, idx) => {
+            content.innerHTML = validationBanner + holidayBanner + debugInfo + classes.map((cls, idx) => {
                 // Check if this is the current period OR if this day already passed
                 let isCurrent = false;
                 let isPast = false;
                 
-                // Check if the entire day is in the past
-                const todayDate = new Date();
+                // Compare actual dates, not just day of week
+                const now = new Date();
+                const viewingDate = new Date(actualDate);
+                viewingDate.setHours(0, 0, 0, 0);
+                const todayDate = new Date(now);
                 todayDate.setHours(0, 0, 0, 0);
                 
-                const dayIndexMap = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'jueves': 4, 'viernes': 5 };
-                const selectedDayIndex = dayIndexMap[selectedDay];
-                const currentDayIndex = today;
-                
-                // If selected day is before current day in the week, mark as past
-                if (selectedDayIndex < currentDayIndex) {
-                    isPast = true;
-                } else if (isToday) {
-                    // Only check times if it's today
+                // Check if viewing date is before today
+                if (viewingDate < todayDate) {
+                    isPast = true; // Entire day is in the past
+                } else if (viewingDate.getTime() === todayDate.getTime()) {
+                    // It's today - check times
                     const times = cls.time.split(' - ');
                     const [startH, startM] = times[0].split(':').map(Number);
                     const [endH, endM] = times[1].split(':').map(Number);
@@ -1637,18 +2124,39 @@
                 const hasEvent = reminders.some(r => r.date === dateStr);
                 const isToday = dateStr === new Date().toISOString().split('T')[0];
                 const isSelected = selectedDate === dateStr;
+                const isHoliday = academicConfig.holidays.some(h => h.date === dateStr);
                 
                 const classes = ['day'];
                 if (isToday) classes.push('today');
                 if (isSelected) classes.push('selected');
                 if (hasEvent) classes.push('has-event');
+                if (isHoliday) classes.push('holiday');
                 
                 daysContainer.innerHTML += `
-                    <div class="${classes.join(' ')}" onclick="selectDate('${dateStr}')">${day}</div>
+                    <div class="${classes.join(' ')}" 
+                         onclick="selectDate('${dateStr}')" 
+                         oncontextmenu="event.preventDefault(); toggleHolidayOnDate('${dateStr}'); return false;"
+                         ontouchstart="dayTouchStart(event, '${dateStr}')"
+                         ontouchend="dayTouchEnd()">${day}</div>
                 `;
             }
             
             showEventsForDate(selectedDate || new Date().toISOString().split('T')[0]);
+        }
+
+        // Touch handlers for mobile long-press
+        let touchTimer = null;
+        function dayTouchStart(event, dateStr) {
+            touchTimer = setTimeout(() => {
+                toggleHolidayOnDate(dateStr);
+            }, 800); // 800ms long press
+        }
+
+        function dayTouchEnd() {
+            if (touchTimer) {
+                clearTimeout(touchTimer);
+                touchTimer = null;
+            }
         }
 
         function selectDate(dateStr) {
@@ -1659,6 +2167,21 @@
         function showEventsForDate(dateStr) {
             const dayEvents = document.getElementById('day-events');
             const events = reminders.filter(r => r.date === dateStr);
+            const holiday = academicConfig.holidays.find(h => h.date === dateStr);
+            
+            let html = '';
+            
+            // Show holiday if exists
+            if (holiday) {
+                html += `
+                    <div style="background: #FFF3E0; border-left: 4px solid #FF9800; padding: 12px; margin-bottom: 10px; border-radius: 8px;">
+                        <div style="font-weight: 600; color: #E65100;">🎉 ${holiday.name}</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">Día Feriado</div>
+                    </div>
+                `;
+            }
+            
+            // Show reminders
             
             if (events.length === 0) {
                 dayEvents.innerHTML = '';
@@ -2621,6 +3144,439 @@
             alert('✅ Estudiante eliminado junto con su historial');
         }
 
+        // NOTIFICATION SYSTEM
+        
+        // Request notification permissions on load
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                console.log('Este navegador no soporta notificaciones');
+                return false;
+            }
+            
+            if (Notification.permission === 'granted') {
+                return true;
+            }
+            
+            if (Notification.permission !== 'denied') {
+                const permission = await Notification.requestPermission();
+                return permission === 'granted';
+            }
+            
+            return false;
+        }
+
+        // Schedule notification for a reminder
+        function scheduleNotification(reminder) {
+            if (!reminder.date || !reminder.time) return;
+            
+            const reminderDateTime = new Date(`${reminder.date}T${reminder.time}`);
+            const now = new Date();
+            const timeUntilReminder = reminderDateTime - now;
+            
+            // Only schedule if in the future
+            if (timeUntilReminder > 0) {
+                // Schedule for exact time
+                setTimeout(() => {
+                    showNotification(reminder);
+                }, timeUntilReminder);
+                
+                // Also schedule 1 hour before
+                const oneHourBefore = timeUntilReminder - (60 * 60 * 1000);
+                if (oneHourBefore > 0) {
+                    setTimeout(() => {
+                        showNotification(reminder, '⏰ Recordatorio en 1 hora');
+                    }, oneHourBefore);
+                }
+            }
+        }
+
+        // Show notification
+        function showNotification(reminder, customTitle = null) {
+            if (Notification.permission !== 'granted') return;
+            
+            const category = getCategoryById(reminder.type);
+            const title = customTitle || `${category.icon} ${category.name}`;
+            const body = `${reminder.title}\n${reminder.subject ? '📚 ' + reminder.subject : ''}\n${reminder.description || ''}`;
+            
+            const notification = new Notification(title, {
+                body: body,
+                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23006847"/><text x="50" y="50" text-anchor="middle" dominant-baseline="middle" font-size="50" fill="white">📅</text></svg>',
+                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23006847"/></svg>',
+                tag: `reminder-${reminder.id}`,
+                requireInteraction: true,
+                vibrate: [200, 100, 200]
+            });
+            
+            notification.onclick = function() {
+                window.focus();
+                // Switch to reminders view
+                document.querySelector('[data-view="recordatorios"]').click();
+                notification.close();
+            };
+        }
+
+        // Check and show pending notifications
+        function checkPendingNotifications() {
+            const now = new Date();
+            const nowStr = now.toISOString().split('T')[0];
+            const nowTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            reminders.forEach(reminder => {
+                if (!reminder.completed && reminder.date && reminder.time) {
+                    // Check if it's time for this reminder
+                    if (reminder.date === nowStr && reminder.time <= nowTime) {
+                        const reminderTime = reminder.time;
+                        const timeParts = reminderTime.split(':');
+                        const reminderMinutes = parseInt(timeParts[0]) * 60 + parseInt(timeParts[1]);
+                        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                        
+                        // Show if within 5 minutes
+                        if (Math.abs(reminderMinutes - nowMinutes) <= 5) {
+                            showNotification(reminder);
+                        }
+                    }
+                }
+            });
+        }
+
+        // DARK MODE FUNCTIONS
+        
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            localStorage.setItem('theme', theme);
+            updateThemeButtons();
+        }
+
+        function updateThemeButtons() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const lightBtn = document.getElementById('theme-light-btn');
+            const darkBtn = document.getElementById('theme-dark-btn');
+            
+            if (lightBtn && darkBtn) {
+                if (isDark) {
+                    lightBtn.style.background = '#424242';
+                    lightBtn.style.color = '#E0E0E0';
+                    lightBtn.style.border = '2px solid #424242';
+                    darkBtn.style.background = '#00A86B';
+                    darkBtn.style.color = 'white';
+                    darkBtn.style.border = '2px solid #00A86B';
+                } else {
+                    lightBtn.style.background = '#006847';
+                    lightBtn.style.color = 'white';
+                    lightBtn.style.border = '2px solid #006847';
+                    darkBtn.style.background = 'white';
+                    darkBtn.style.color = '#333';
+                    darkBtn.style.border = '2px solid #ddd';
+                }
+            }
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            setTheme(savedTheme);
+        }
+
+        // ACADEMIC CALENDAR AND HOLIDAYS FUNCTIONS
+        
+        function saveAcademicConfig() {
+            academicConfig.startDate = document.getElementById('academic-start-date').value;
+            academicConfig.endDate = document.getElementById('academic-end-date').value;
+            academicConfig.midYearBreakStart = document.getElementById('midyear-start').value;
+            academicConfig.midYearBreakEnd = document.getElementById('midyear-end').value;
+            
+            localStorage.setItem('academicConfig', JSON.stringify(academicConfig));
+            alert('✅ Configuración académica guardada');
+            renderSchedule(); // Refresh to show new dates
+        }
+
+        function loadAcademicConfigForm() {
+            document.getElementById('academic-start-date').value = academicConfig.startDate;
+            document.getElementById('academic-end-date').value = academicConfig.endDate;
+            document.getElementById('midyear-start').value = academicConfig.midYearBreakStart;
+            document.getElementById('midyear-end').value = academicConfig.midYearBreakEnd;
+            renderHolidaysList();
+            updateNotificationStatus();
+            updateThemeButtons();
+        }
+
+        function updateNotificationStatus() {
+            const statusDiv = document.getElementById('notification-status');
+            if (!statusDiv) return;
+            
+            if (!('Notification' in window)) {
+                statusDiv.innerHTML = '❌ Tu navegador no soporta notificaciones';
+                statusDiv.style.background = '#FFEBEE';
+                return;
+            }
+            
+            if (Notification.permission === 'granted') {
+                statusDiv.innerHTML = '✅ Notificaciones HABILITADAS<br><span style="font-size: 11px;">Recibirás alertas en tiempo real</span>';
+                statusDiv.style.background = '#E8F5E9';
+            } else if (Notification.permission === 'denied') {
+                statusDiv.innerHTML = '❌ Notificaciones BLOQUEADAS<br><span style="font-size: 11px;">Ve a configuración del navegador para permitirlas</span>';
+                statusDiv.style.background = '#FFEBEE';
+            } else {
+                statusDiv.innerHTML = '⏳ Notificaciones DESHABILITADAS<br><span style="font-size: 11px;">Toca el botón abajo para activarlas</span>';
+                statusDiv.style.background = '#FFF3E0';
+            }
+        }
+
+        async function enableNotifications() {
+            const hasPermission = await requestNotificationPermission();
+            
+            if (hasPermission) {
+                updateNotificationStatus();
+                alert('✅ ¡Notificaciones habilitadas!\n\nAhora recibirás alertas de tus recordatorios.');
+                
+                // Schedule all reminders
+                reminders.forEach(reminder => {
+                    if (!reminder.completed) {
+                        scheduleNotification(reminder);
+                    }
+                });
+                
+                // Show test notification
+                if (confirm('¿Quieres ver una notificación de prueba?')) {
+                    new Notification('🎉 ¡Notificaciones Activadas!', {
+                        body: 'Las notificaciones de la app Horario ESFM están funcionando correctamente.',
+                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23006847"/><text x="50" y="50" text-anchor="middle" dominant-baseline="middle" font-size="50" fill="white">📅</text></svg>',
+                        vibrate: [200, 100, 200]
+                    });
+                }
+            } else {
+                updateNotificationStatus();
+                alert('❌ No se pudieron activar las notificaciones.\n\nRevisa los permisos de tu navegador.');
+            }
+        }
+
+        function renderHolidaysList() {
+            const list = document.getElementById('holidays-list');
+            if (!academicConfig.holidays || academicConfig.holidays.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">No hay feriados configurados</div>';
+                return;
+            }
+            
+            // Sort holidays by date
+            const sorted = [...academicConfig.holidays].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            list.innerHTML = sorted.map((holiday, idx) => {
+                const actualIdx = academicConfig.holidays.findIndex(h => h.date === holiday.date && h.name === holiday.name);
+                const date = new Date(holiday.date);
+                const dateStr = date.toLocaleDateString('es-BO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                
+                return `
+                    <div style="background: #FFF3E0; border-left: 4px solid #FF9800; padding: 12px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 3px;">🎉 ${holiday.name}</div>
+                            <div style="font-size: 12px; color: #666;">📅 ${dateStr}</div>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="editHoliday(${actualIdx})" style="padding: 6px 12px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 12px; cursor: pointer; font-weight: 500;">
+                                ✏️ Editar
+                            </button>
+                            <button onclick="deleteHoliday(${actualIdx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer; font-weight: 500;">
+                                🗑️ Eliminar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addHoliday() {
+            const date = document.getElementById('new-holiday-date').value;
+            const name = document.getElementById('new-holiday-name').value.trim();
+            
+            if (!date) {
+                alert('Por favor selecciona una fecha');
+                return;
+            }
+            
+            if (!name) {
+                alert('Por favor ingresa el nombre del feriado');
+                return;
+            }
+            
+            // Check if already exists
+            if (academicConfig.holidays.some(h => h.date === date)) {
+                alert('Ya existe un feriado en esta fecha');
+                return;
+            }
+            
+            academicConfig.holidays.push({ date, name });
+            localStorage.setItem('academicConfig', JSON.stringify(academicConfig));
+            
+            document.getElementById('new-holiday-date').value = '';
+            document.getElementById('new-holiday-name').value = '';
+            
+            renderHolidaysList();
+            updateCalendar(); // Refresh calendar to show holiday
+            
+            alert('✅ Feriado agregado');
+        }
+
+        function deleteHoliday(index) {
+            const holiday = academicConfig.holidays[index];
+            
+            if (confirm(`¿Eliminar el feriado "${holiday.name}"?`)) {
+                academicConfig.holidays.splice(index, 1);
+                localStorage.setItem('academicConfig', JSON.stringify(academicConfig));
+                renderHolidaysList();
+                updateCalendar(); // Refresh calendar
+                renderDayTabs(); // Refresh tabs
+                alert('✅ Feriado eliminado');
+            }
+        }
+
+        function editHoliday(index) {
+            const holiday = academicConfig.holidays[index];
+            
+            const newName = prompt(`Editar nombre del feriado:\n(Fecha: ${holiday.date})`, holiday.name);
+            
+            if (newName === null) return; // Cancelled
+            
+            if (!newName.trim()) {
+                alert('El nombre no puede estar vacío');
+                return;
+            }
+            
+            const newDate = prompt(`Editar fecha del feriado:\n(Formato: AAAA-MM-DD)`, holiday.date);
+            
+            if (newDate === null) return; // Cancelled
+            
+            // Validate date format
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+                alert('Formato de fecha inválido. Usa: AAAA-MM-DD (ejemplo: 2026-12-25)');
+                return;
+            }
+            
+            // Check if new date conflicts with another holiday (unless it's the same holiday)
+            const existingHoliday = academicConfig.holidays.find((h, i) => h.date === newDate && i !== index);
+            if (existingHoliday) {
+                alert(`Ya existe un feriado en esa fecha: ${existingHoliday.name}`);
+                return;
+            }
+            
+            // Update holiday
+            academicConfig.holidays[index] = {
+                date: newDate,
+                name: newName.trim()
+            };
+            
+            localStorage.setItem('academicConfig', JSON.stringify(academicConfig));
+            renderHolidaysList();
+            updateCalendar();
+            renderDayTabs();
+            alert('✅ Feriado actualizado');
+        }
+
+        function toggleHolidayOnDate(dateStr) {
+            const existing = academicConfig.holidays.findIndex(h => h.date === dateStr);
+            
+            if (existing >= 0) {
+                // Remove holiday
+                if (confirm(`¿Quitar el feriado "${academicConfig.holidays[existing].name}"?`)) {
+                    academicConfig.holidays.splice(existing, 1);
+                    localStorage.setItem('academicConfig', JSON.stringify(academicConfig));
+                    updateCalendar();
+                }
+            } else {
+                // Add holiday
+                const name = prompt('Nombre del feriado:');
+                if (name && name.trim()) {
+                    academicConfig.holidays.push({ date: dateStr, name: name.trim() });
+                    localStorage.setItem('academicConfig', JSON.stringify(academicConfig));
+                    updateCalendar();
+                    alert('✅ Feriado agregado');
+                }
+            }
+        }
+
+        // BACKUP AND RESTORE FUNCTIONS
+        
+        function exportBackup() {
+            const backup = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                appName: 'Horario ESFM Simón Bolívar',
+                data: {
+                    customSchedule: localStorage.getItem('customSchedule'),
+                    reminders: localStorage.getItem('reminders'),
+                    attendanceRecords: localStorage.getItem('attendanceRecords'),
+                    studentsList: localStorage.getItem('studentsList'),
+                    customCategories: localStorage.getItem('customCategories'),
+                    academicConfig: localStorage.getItem('academicConfig'),
+                    subjectsCatalog: localStorage.getItem('subjectsCatalog'),
+                    teachersCatalog: localStorage.getItem('teachersCatalog'),
+                    periodsCatalog: localStorage.getItem('periodsCatalog'),
+                    timeSlotsCatalog: localStorage.getItem('timeSlotsCatalog'),
+                    studentGrades: localStorage.getItem('studentGrades')
+                }
+            };
+            
+            const dataStr = JSON.stringify(backup, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `horario-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            alert('✅ Backup exportado correctamente\n\n📁 Archivo: horario-backup-' + new Date().toISOString().split('T')[0] + '.json');
+        }
+
+        function openImportBackup() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    importBackup(file);
+                }
+            };
+            input.click();
+        }
+
+        function importBackup(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backup = JSON.parse(e.target.result);
+                    
+                    if (!backup.version || !backup.data) {
+                        throw new Error('Archivo de backup inválido');
+                    }
+                    
+                    const confirmMsg = `⚠️ ADVERTENCIA ⚠️\n\n` +
+                        `Esto reemplazará TODOS tus datos actuales con:\n\n` +
+                        `📅 Backup creado: ${new Date(backup.exportDate).toLocaleString('es-BO')}\n` +
+                        `📱 App: ${backup.appName || 'Horario ESFM'}\n\n` +
+                        `¿Estás seguro de continuar?`;
+                    
+                    if (confirm(confirmMsg)) {
+                        // Import all data
+                        Object.keys(backup.data).forEach(key => {
+                            if (backup.data[key]) {
+                                localStorage.setItem(key, backup.data[key]);
+                            }
+                        });
+                        
+                        alert('✅ Backup restaurado correctamente\n\nLa app se recargará ahora.');
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                } catch (error) {
+                    alert('❌ Error al importar backup:\n\n' + error.message + '\n\nAsegúrate de que el archivo sea un backup válido.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
         function exportToExcel() {
             const wb = XLSX.utils.book_new();
             
@@ -2669,10 +3625,36 @@
         }
 
         // Initialize everything
+        loadTheme(); // Load theme first
+        updateWeekDisplay(); // Show week range
+        renderDayTabs(); // Render day tabs with dates
         renderSchedule();
         initNavigation();
         updateCalendar();
         renderReminders();
+
+        // Initialize notifications
+        (async function() {
+            const hasPermission = await requestNotificationPermission();
+            if (hasPermission) {
+                console.log('✅ Notificaciones habilitadas');
+                
+                // Check for pending notifications every minute
+                setInterval(checkPendingNotifications, 60000);
+                
+                // Check immediately
+                checkPendingNotifications();
+                
+                // Schedule all future reminders
+                reminders.forEach(reminder => {
+                    if (!reminder.completed) {
+                        scheduleNotification(reminder);
+                    }
+                });
+            } else {
+                console.log('⚠️ Notificaciones no habilitadas');
+            }
+        })();
 
         // Install button for PWA
         let deferredPrompt;
