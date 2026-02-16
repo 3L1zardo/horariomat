@@ -1,0 +1,2766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Horario ESFM">
+    <meta name="theme-color" content="#006847">
+    <meta name="description" content="Aplicación de horario escolar con recordatorios y calendario para E.S.F.M. Simón Bolívar">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" id="manifest-placeholder">
+    
+    <!-- Icons for iOS -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23006847'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='256' fill='white'>📅</text></svg>">
+    
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <title>Horario ESFM Simón Bolívar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #006847;
+            --secondary: #FFD700;
+            --red: #CE1126;
+            --bg: #f5f5f5;
+            --card: #ffffff;
+            --text: #333;
+            --border: #ddd;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            padding-bottom: 70px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary), #008855);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .header .subtitle {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        /* Date Navigation */
+        .date-nav {
+            background: white;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .date-nav button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .current-date {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 99;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            border: none;
+            background: white;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Content */
+        .content {
+            padding: 15px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .schedule-card {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .schedule-card.merged-start {
+            border-radius: 10px 10px 0 0;
+            margin-bottom: 0;
+            padding-bottom: 8px;
+        }
+
+        .schedule-card.merged-middle {
+            border-radius: 0;
+            margin-bottom: 0;
+            margin-top: 0;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border-top: 2px dashed rgba(0, 104, 71, 0.2);
+        }
+
+        .schedule-card.merged-end {
+            border-radius: 0 0 10px 10px;
+            margin-top: 0;
+            padding-top: 8px;
+            margin-bottom: 15px;
+            border-top: 2px dashed rgba(0, 104, 71, 0.2);
+        }
+
+        .schedule-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .schedule-card.merged-start:hover,
+        .schedule-card.merged-middle:hover,
+        .schedule-card.merged-end:hover {
+            transform: none;
+        }
+
+        .edit-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            cursor: pointer;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .edit-btn:hover {
+            background: white;
+            color: var(--primary);
+        }
+
+        .schedule-card.break {
+            background: #FFF9E6;
+            border-left-color: var(--secondary);
+            text-align: center;
+            cursor: default;
+            padding: 10px 15px;
+        }
+
+        .schedule-card.break:hover {
+            transform: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Current Period Highlighting */
+        .schedule-card.current-period {
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9) !important;
+            border-left: 5px solid #4CAF50 !important;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4) !important;
+            animation: pulse-glow 2s ease-in-out infinite;
+            position: relative;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            }
+            50% { 
+                transform: scale(1.02);
+                box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+            }
+        }
+
+        .current-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 700;
+            animation: badge-blink 1.5s ease-in-out infinite;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+        }
+
+        @keyframes badge-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.75; }
+        }
+
+        /* Past Period Styling */
+        .schedule-card.past-period {
+            opacity: 0.6;
+            background: #f5f5f5 !important;
+            border-left-color: #9E9E9E !important;
+        }
+
+        .schedule-card.past-period .subject,
+        .schedule-card.past-period .teacher,
+        .schedule-card.past-period .time {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .past-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #9E9E9E;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        }
+
+        .schedule-card .period {
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+            font-weight: 500;
+        }
+
+        .schedule-card .time {
+            font-size: 13px;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .schedule-card .subject {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .schedule-card .teacher {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .schedule-card .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .schedule-card button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-note {
+            background: #E3F2FD;
+            color: #1565C0;
+            font-weight: 500;
+        }
+
+        .btn-note:hover {
+            background: #BBDEFB;
+        }
+
+        .btn-reminder {
+            background: #FFF9C4;
+            color: #F57F17;
+            font-weight: 500;
+        }
+
+        .btn-reminder:hover {
+            background: #FFF59D;
+        }
+
+        .settings-btn {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            font-size: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.2s;
+        }
+
+        .settings-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Calendar Grid */
+        .calendar {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .weekday {
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            padding: 10px 0;
+            color: var(--primary);
+        }
+
+        .days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .day:hover {
+            background: #f0f0f0;
+        }
+
+        .day.today {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .day.selected {
+            background: var(--secondary);
+            font-weight: 600;
+        }
+
+        .day.has-event::after {
+            content: '';
+            position: absolute;
+            bottom: 5px;
+            width: 5px;
+            height: 5px;
+            background: var(--red);
+            border-radius: 50%;
+        }
+
+        /* Reminders List */
+        .reminder-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--red);
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .reminder-item.completed {
+            opacity: 0.6;
+            background: #f5f5f5;
+        }
+
+        .reminder-item.completed .title {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .reminder-item.tarea {
+            border-left-color: #4CAF50;
+        }
+
+        .reminder-item.examen {
+            border-left-color: #f44336;
+        }
+
+        .reminder-item.exposicion {
+            border-left-color: #2196F3;
+        }
+
+        .reminder-item.evento {
+            border-left-color: #9C27B0;
+        }
+
+        .reminder-item.congreso {
+            border-left-color: #FF9800;
+        }
+
+        .reminder-item .title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .reminder-item .type {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .reminder-item .type.tarea {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .reminder-item .type.examen {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .reminder-item .type.exposicion {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+
+        .reminder-item .type.evento {
+            background: #F3E5F5;
+            color: #6A1B9A;
+        }
+
+        .reminder-item .type.congreso {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+
+        .reminder-item .type.otro {
+            background: #ECEFF1;
+            color: #455A64;
+        }
+
+        .reminder-item .date {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .checkbox-complete {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .reminder-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .reminder-actions button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-complete {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .btn-delete {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .category-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        /* FAB Button */
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 28px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+
+        .fab:active {
+            transform: scale(0.95);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #666;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-item .icon {
+            font-size: 24px;
+            margin-bottom: 3px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-cancel {
+            background: #f0f0f0;
+        }
+
+        .btn-save {
+            background: var(--primary);
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>E.S.F.M. "SIMÓN BOLÍVAR"</h1>
+        <div class="subtitle">1RO MATEMÁTICA</div>
+    </div>
+
+    <!-- Settings Button -->
+    <button class="settings-btn" onclick="openSettings()" title="Configurar Horario">⚙️</button>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-item active" data-view="horario">
+            <div class="icon">📅</div>
+            <div>Horario</div>
+        </button>
+        <button class="nav-item" data-view="calendario">
+            <div class="icon">📆</div>
+            <div>Calendario</div>
+        </button>
+        <button class="nav-item" data-view="recordatorios">
+            <div class="icon">🔔</div>
+            <div>Recordatorios</div>
+        </button>
+        <button class="nav-item" data-view="asistencia">
+            <div class="icon">✅</div>
+            <div>Asistencia</div>
+        </button>
+    </div>
+
+    <!-- Content Container -->
+    <div class="content-container">
+        <!-- Horario View -->
+        <div class="tab-content active" id="horario-view">
+            <div class="date-nav">
+                <button onclick="changeWeek(-1)">◄</button>
+                <div class="current-date" id="current-week"></div>
+                <button onclick="changeWeek(1)">►</button>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" data-day="lunes">Lun</button>
+                <button class="tab" data-day="martes">Mar</button>
+                <button class="tab" data-day="miercoles">Mié</button>
+                <button class="tab" data-day="jueves">Jue</button>
+                <button class="tab" data-day="viernes">Vie</button>
+            </div>
+
+            <div class="content" id="schedule-content"></div>
+        </div>
+
+        <!-- Calendario View -->
+        <div class="tab-content" id="calendario-view">
+            <div class="content">
+                <div class="calendar">
+                    <div class="date-nav" style="margin-bottom: 15px;">
+                        <button onclick="changeMonth(-1)">◄</button>
+                        <div class="current-date" id="current-month"></div>
+                        <button onclick="changeMonth(1)">►</button>
+                    </div>
+                    <div class="weekdays">
+                        <div class="weekday">Dom</div>
+                        <div class="weekday">Lun</div>
+                        <div class="weekday">Mar</div>
+                        <div class="weekday">Mié</div>
+                        <div class="weekday">Jue</div>
+                        <div class="weekday">Vie</div>
+                        <div class="weekday">Sáb</div>
+                    </div>
+                    <div class="days" id="calendar-days"></div>
+                </div>
+                <div id="day-events" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <!-- Recordatorios View -->
+        <div class="tab-content" id="recordatorios-view">
+            <div style="background: white; padding: 10px 15px; display: flex; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px;">
+                <button class="filter-btn active" data-filter="all" onclick="filterReminders('all')" style="flex: 1; padding: 8px; border: none; border-radius: 5px; background: var(--primary); color: white; font-size: 13px; cursor: pointer; font-weight: 500;">
+                    📋 Todos
+                </button>
+                <button class="filter-btn" data-filter="pending" onclick="filterReminders('pending')" style="flex: 1; padding: 8px; border: none; border-radius: 5px; background: #f0f0f0; color: #666; font-size: 13px; cursor: pointer; font-weight: 500;">
+                    ⏳ Pendientes
+                </button>
+                <button class="filter-btn" data-filter="completed" onclick="filterReminders('completed')" style="flex: 1; padding: 8px; border: none; border-radius: 5px; background: #f0f0f0; color: #666; font-size: 13px; cursor: pointer; font-weight: 500;">
+                    ✅ Completados
+                </button>
+            </div>
+            <div class="content" id="reminders-content"></div>
+        </div>
+
+        <!-- Asistencia View -->
+        <div class="tab-content" id="asistencia-view">
+            <div style="background: white; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="font-size: 16px; font-weight: 600;">Control de Asistencia</h3>
+                    <button onclick="openAttendanceSettings()" style="padding: 8px 15px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 12px; cursor: pointer; font-weight: 500;">
+                        ⚙️ Estudiantes
+                    </button>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="date" id="attendance-date-picker" onchange="updateAttendanceDate()" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <select id="attendance-subject-picker" onchange="updateAttendanceSubject()" style="flex: 2; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    </select>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                    <button onclick="markAllPresent()" style="flex: 1; padding: 10px; background: #E8F5E9; border: none; border-radius: 5px; color: #2E7D32; font-size: 12px; cursor: pointer; font-weight: 600;">
+                        ✅ Todos Presentes
+                    </button>
+                    <button onclick="clearAllAttendance()" style="flex: 1; padding: 10px; background: #FFF3E0; border: none; border-radius: 5px; color: #E65100; font-size: 12px; cursor: pointer; font-weight: 600;">
+                        🔄 Limpiar Todo
+                    </button>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div id="attendance-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;"></div>
+            </div>
+
+            <!-- Student Roster -->
+            <div class="content" id="attendance-roster"></div>
+
+            <!-- History Button -->
+            <div style="padding: 0 15px 15px;">
+                <button onclick="openGradesView()" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 10px;">
+                    📝 Calificaciones y Evaluación
+                </button>
+                <button onclick="openAttendanceHistory()" style="width: 100%; padding: 12px; background: white; border: 2px solid var(--primary); color: var(--primary); border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 10px;">
+                    📊 Ver Historial de Asistencia
+                </button>
+                <button onclick="exportToExcel()" style="width: 100%; padding: 12px; background: #E8F5E9; color: #2E7D32; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    📥 Exportar a Excel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAB Button -->
+    <button class="fab" onclick="openModal()">+</button>
+
+    <!-- Modal for Adding Reminder -->
+    <div class="modal" id="reminder-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                Agregar Recordatorio
+                <button onclick="openCategoryManager()" style="float: right; background: #E3F2FD; color: #1565C0; border: none; padding: 5px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; font-weight: 500;">
+                    🏷️ Gestionar Categorías
+                </button>
+            </div>
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="reminder-type"></select>
+            </div>
+            <div class="form-group">
+                <label>Materia</label>
+                <select id="reminder-subject">
+                    <option value="">Seleccionar materia (opcional)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Título</label>
+                <input type="text" id="reminder-title" placeholder="Ej: Resolver ejercicios página 45">
+            </div>
+            <div class="form-group">
+                <label>Descripción (opcional)</label>
+                <textarea id="reminder-description" placeholder="Agregar detalles..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Fecha</label>
+                <input type="date" id="reminder-date">
+            </div>
+            <div class="form-group">
+                <label>Hora (opcional)</label>
+                <input type="time" id="reminder-time">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="btn-save" onclick="saveReminder()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Class Details -->
+    <div class="modal" id="class-modal">
+        <div class="modal-content">
+            <div class="modal-header" id="class-modal-title"></div>
+            <div id="class-modal-content"></div>
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button class="btn-save" onclick="addReminderFromClass()" style="flex: 1;">⏰ Agregar Recordatorio</button>
+                <button class="btn-cancel" onclick="closeClassModal()" style="flex: 1;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Settings -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">⚙️ Configuración del Horario</div>
+            
+            <!-- Tabs for Settings -->
+            <div style="display: flex; gap: 5px; margin-bottom: 20px; background: #f5f5f5; padding: 5px; border-radius: 8px; overflow-x: auto;">
+                <button class="settings-tab active" data-tab="schedule" onclick="switchSettingsTab('schedule')" style="flex: 1; min-width: 80px; padding: 10px; border: none; border-radius: 5px; background: white; font-size: 12px; cursor: pointer; font-weight: 500; white-space: nowrap;">
+                    📅 Horario
+                </button>
+                <button class="settings-tab" data-tab="subjects" onclick="switchSettingsTab('subjects')" style="flex: 1; min-width: 80px; padding: 10px; border: none; border-radius: 5px; background: transparent; font-size: 12px; cursor: pointer; font-weight: 500; color: #666; white-space: nowrap;">
+                    📚 Materias
+                </button>
+                <button class="settings-tab" data-tab="teachers" onclick="switchSettingsTab('teachers')" style="flex: 1; min-width: 80px; padding: 10px; border: none; border-radius: 5px; background: transparent; font-size: 12px; cursor: pointer; font-weight: 500; color: #666; white-space: nowrap;">
+                    👨‍🏫 Docentes
+                </button>
+                <button class="settings-tab" data-tab="periods" onclick="switchSettingsTab('periods')" style="flex: 1; min-width: 80px; padding: 10px; border: none; border-radius: 5px; background: transparent; font-size: 12px; cursor: pointer; font-weight: 500; color: #666; white-space: nowrap;">
+                    🕐 Períodos
+                </button>
+                <button class="settings-tab" data-tab="times" onclick="switchSettingsTab('times')" style="flex: 1; min-width: 80px; padding: 10px; border: none; border-radius: 5px; background: transparent; font-size: 12px; cursor: pointer; font-weight: 500; color: #666; white-space: nowrap;">
+                    ⏰ Horarios
+                </button>
+            </div>
+
+            <!-- Schedule Tab -->
+            <div id="settings-schedule-tab" class="settings-tab-content">
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #666; font-size: 14px;">Administra tu horario escolar. Puedes editar, agregar o eliminar clases para cada día.</p>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Seleccionar día:</label>
+                    <select id="settings-day-select" onchange="loadDayForEditing()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                        <option value="lunes">Lunes</option>
+                        <option value="martes">Martes</option>
+                        <option value="miercoles">Miércoles</option>
+                        <option value="jueves">Jueves</option>
+                        <option value="viernes">Viernes</option>
+                    </select>
+                </div>
+
+                <div id="settings-classes-list" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;"></div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="addNewClass()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        ➕ Agregar Nueva Clase
+                    </button>
+                    <button onclick="resetSchedule()" style="padding: 12px 20px; background: #FFEBEE; color: #C62828; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        🔄 Restaurar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Subjects Tab -->
+            <div id="settings-subjects-tab" class="settings-tab-content" style="display: none;">
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Gestiona tu catálogo de materias. Estas materias aparecerán como opciones al editar tu horario.</p>
+                    
+                    <div id="subjects-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin-bottom: 10px; font-size: 14px;">➕ Agregar Nueva Materia</h4>
+                        <div class="form-group">
+                            <input type="text" id="new-subject-name" placeholder="Nombre completo de la materia" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                        <button onclick="addSubject()" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                            Agregar Materia
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teachers Tab -->
+            <div id="settings-teachers-tab" class="settings-tab-content" style="display: none;">
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Gestiona tu catálogo de docentes. Estos docentes aparecerán como opciones al editar tu horario.</p>
+                    
+                    <div id="teachers-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin-bottom: 10px; font-size: 14px;">➕ Agregar Nuevo Docente</h4>
+                        <div class="form-group">
+                            <input type="text" id="new-teacher-name" placeholder="Nombre completo del docente" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                        <button onclick="addTeacher()" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                            Agregar Docente
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Periods Tab -->
+            <div id="settings-periods-tab" class="settings-tab-content" style="display: none;">
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Gestiona tus períodos de clase (1er periodo, 2do periodo, etc.).</p>
+                    
+                    <div id="periods-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin-bottom: 10px; font-size: 14px;">➕ Agregar Nuevo Período</h4>
+                        <div class="form-group">
+                            <input type="text" id="new-period-name" placeholder="Ej: 7mo periodo" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                        <button onclick="addPeriod()" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                            Agregar Período
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Slots Tab -->
+            <div id="settings-times-tab" class="settings-tab-content" style="display: none;">
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Gestiona tus horarios (franjas horarias como 8:00 - 9:00).</p>
+                    
+                    <div id="times-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin-bottom: 10px; font-size: 14px;">➕ Agregar Nueva Franja Horaria</h4>
+                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                            <input type="time" id="new-time-start" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            <span style="font-weight: 600;">-</span>
+                            <input type="time" id="new-time-end" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                        <button onclick="addTimeSlot()" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                            Agregar Horario
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="closeSettings()" style="width: 100%; padding: 12px; background: #f0f0f0; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 10px;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Editing Class -->
+    <div class="modal" id="edit-class-modal">
+        <div class="modal-content">
+            <div class="modal-header">✏️ Editar Clase</div>
+            
+            <div class="form-group">
+                <label>Día de la semana</label>
+                <select id="edit-day" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <option value="lunes">Lunes</option>
+                    <option value="martes">Martes</option>
+                    <option value="miercoles">Miércoles</option>
+                    <option value="jueves">Jueves</option>
+                    <option value="viernes">Viernes</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Período</label>
+                <select id="edit-period" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                </select>
+                <button onclick="openQuickAddPeriod()" style="margin-top: 5px; padding: 6px 12px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 12px; cursor: pointer; font-weight: 500;">
+                    ➕ Agregar nuevo período
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label>Horario</label>
+                <select id="edit-time-slot" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                </select>
+                <button onclick="openQuickAddTimeSlot()" style="margin-top: 5px; padding: 6px 12px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 12px; cursor: pointer; font-weight: 500;">
+                    ➕ Agregar nuevo horario
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label>Materia</label>
+                <select id="edit-subject" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                </select>
+                <button onclick="openQuickAddSubject()" style="margin-top: 5px; padding: 6px 12px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 12px; cursor: pointer; font-weight: 500;">
+                    ➕ Agregar nueva materia
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label>Docente</label>
+                <select id="edit-teacher" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                </select>
+                <button onclick="openQuickAddTeacher()" style="margin-top: 5px; padding: 6px 12px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 12px; cursor: pointer; font-weight: 500;">
+                    ➕ Agregar nuevo docente
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="edit-is-break" onchange="toggleBreakFields()">
+                    <span>Es un recreo/descanso</span>
+                </label>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeEditClass()">Cancelar</button>
+                <button class="btn-save" onclick="saveEditedClass()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Category Management -->
+    <div class="modal" id="category-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">🏷️ Gestionar Categorías</div>
+            
+            <div style="margin-bottom: 20px;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Personaliza las categorías de tus recordatorios</p>
+                <div id="categories-list"></div>
+            </div>
+
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <h4 style="margin-bottom: 10px; font-size: 14px;">➕ Agregar Nueva Categoría</h4>
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="new-category-name" placeholder="Ej: Seminario">
+                </div>
+                <div class="form-group">
+                    <label>Emoji/Ícono</label>
+                    <input type="text" id="new-category-icon" placeholder="Ej: 🎯" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label>Color</label>
+                    <input type="color" id="new-category-color" value="#2196F3">
+                </div>
+                <button onclick="addNewCategory()" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                    Agregar Categoría
+                </button>
+            </div>
+
+            <button onclick="closeCategoryManager()" style="width: 100%; padding: 12px; background: #f0f0f0; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Attendance Settings -->
+    <div class="modal" id="attendance-settings-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">⚙️ Lista de Estudiantes</div>
+            
+            <div style="margin-bottom: 20px;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Gestiona la lista de estudiantes de tu clase.</p>
+                
+                <div id="students-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                    <h4 style="margin-bottom: 10px; font-size: 14px;">➕ Agregar Estudiante</h4>
+                    <div class="form-group">
+                        <input type="text" id="new-student-name" placeholder="Nombre completo del estudiante" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    </div>
+                    <button onclick="addStudent()" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                        Agregar Estudiante
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="closeAttendanceSettings()" style="width: 100%; padding: 12px; background: #f0f0f0; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Attendance History -->
+    <div class="modal" id="attendance-history-modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">📊 Historial de Asistencia</div>
+            
+            <div style="margin-bottom: 15px;">
+                <select id="history-subject-filter" onchange="filterHistory()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">Todas las materias</option>
+                </select>
+            </div>
+
+            <div id="attendance-history-content" style="max-height: 500px; overflow-y: auto;"></div>
+
+            <button onclick="closeAttendanceHistory()" style="width: 100%; padding: 12px; background: #f0f0f0; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 15px;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Grades View -->
+    <div class="modal" id="grades-modal">
+        <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>📝 Calificaciones y Evaluación</span>
+                <button onclick="openCriteriaSettings()" style="padding: 6px 12px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 12px; cursor: pointer; font-weight: 500;">
+                    ⚙️ Criterios
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <select id="grades-subject-filter" onchange="updateGradesView()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                </select>
+            </div>
+
+            <!-- Criteria Summary -->
+            <div id="criteria-summary" style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;"></div>
+
+            <!-- Students Grades Table -->
+            <div id="grades-table-container" style="overflow-x: auto;"></div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="exportGradesToExcel()" style="flex: 1; padding: 12px; background: #E8F5E9; color: #2E7D32; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    📥 Exportar Calificaciones
+                </button>
+                <button onclick="closeGradesView()" style="flex: 1; padding: 12px; background: #f0f0f0; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Criteria Settings -->
+    <div class="modal" id="criteria-settings-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">⚙️ Configurar Criterios de Evaluación</div>
+            
+            <div style="margin-bottom: 20px;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Define qué aspectos evaluarás y qué porcentaje representa cada uno. El total debe sumar 100%.</p>
+                
+                <div id="criteria-list" style="margin-bottom: 15px;"></div>
+
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <h4 style="margin-bottom: 10px; font-size: 14px;">➕ Agregar Nuevo Criterio</h4>
+                    <div class="form-group">
+                        <label>Nombre del Criterio</label>
+                        <input type="text" id="new-criteria-name" placeholder="Ej: Trabajos en clase, Proyecto final">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>Porcentaje (%)</label>
+                            <input type="number" id="new-criteria-percentage" min="0" max="100" placeholder="20">
+                        </div>
+                        <div class="form-group">
+                            <label>Nota Máxima</label>
+                            <input type="number" id="new-criteria-max" min="1" value="100" placeholder="100">
+                        </div>
+                    </div>
+                    <button onclick="addCriteria()" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                        Agregar Criterio
+                    </button>
+                </div>
+
+                <div id="total-percentage" style="text-align: center; padding: 10px; background: #E3F2FD; border-radius: 8px; font-weight: 600; color: #1565C0;"></div>
+            </div>
+
+            <button onclick="closeCriteriaSettings()" style="width: 100%; padding: 12px; background: #f0f0f0; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Schedule Data - Exact from image
+        const scheduleData = {
+            lunes: [
+                { time: "8:00 - 9:00", subject: "RAZONAMIENTO LÓGICO MATEMÁTICO", teacher: "Docente Tres Matematica", period: "1er periodo" },
+                { time: "9:00 - 10:00", subject: "RAZONAMIENTO LÓGICO MATEMÁTICO", teacher: "Docente Tres Matematica", period: "2do periodo" },
+                { time: "10:00 - 10:15", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "10:15 - 11:15", subject: "LO: IDENTIDAD CULTURAL CON LOS PRINCIPIOS Y VALORES", teacher: "Docente Tres Matematica", period: "3er periodo" },
+                { time: "11:15 - 12:15", subject: "MÚSICA", teacher: "Lic. Hernan Mamani", period: "4to periodo" },
+                { time: "12:15 - 12:30", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "12:30 - 13:30", subject: "FUNDAMENTOS DE LA ARITMÉTICA Y ÁLGEBRA", teacher: "Lic. Hernan Mamani", period: "5to periodo" },
+                { time: "13:30 - 14:30", subject: "FUNDAMENTOS DE LA ARITMÉTICA Y ÁLGEBRA", teacher: "Lic. Eduardo Mercado", period: "6to periodo" }
+            ],
+            martes: [
+                { time: "8:00 - 9:00", subject: "HISTORIA CRÍTICA DE LA EDUCACIÓN BOLIVIANA", teacher: "Docente Uno Sociales", period: "1er periodo" },
+                { time: "9:00 - 10:00", subject: "HISTORIA CRÍTICA DE LA EDUCACIÓN BOLIVIANA", teacher: "Docente Uno Sociales", period: "2do periodo" },
+                { time: "10:00 - 10:15", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "10:15 - 11:15", subject: "FUNDAMENTOS DE LA ARITMÉTICA Y ÁLGEBRA", teacher: "Docente Tres Matematica", period: "3er periodo" },
+                { time: "11:15 - 12:15", subject: "MÚSICA", teacher: "Lic. Eduardo Mercado", period: "4to periodo" },
+                { time: "12:15 - 12:30", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "12:30 - 13:30", subject: "TALLER I INVESTIGACIÓN EDUCATIVA Y PRODUCCIÓN DE CONOCIMIENTOS", teacher: "Lic. Eduardo Mercado", period: "5to periodo" },
+                { time: "13:30 - 14:30", subject: "TALLER I INVESTIGACIÓN EDUCATIVA Y PRODUCCIÓN DE CONOCIMIENTOS", teacher: "Lic. Marlene Mamani", period: "6to periodo" }
+            ],
+            miercoles: [
+                { time: "8:00 - 9:00", subject: "CÁLCULO APLICADA A LA TECNOLOGÍA", teacher: "Lic. Ivan Wily Copa", period: "1er periodo" },
+                { time: "9:00 - 10:00", subject: "CÁLCULO APLICADA A LA TECNOLOGÍA", teacher: "Lic. Ivan Wily Copa", period: "2do periodo" },
+                { time: "10:00 - 10:15", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "10:15 - 11:15", subject: "MODELO EDUCATIVO SOCIOCOMUNITARIO PRODUCTIVO", teacher: "Lic. Ivan Wily Copa", period: "3er periodo" },
+                { time: "11:15 - 12:15", subject: "MÚSICA", teacher: "Docente Dos Musica", period: "4to periodo" },
+                { time: "12:15 - 12:30", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "12:30 - 13:30", subject: "HISTORIA CRÍTICA DE LA EDUCACIÓN BOLIVIANA", teacher: "Docente Uno Sociales", period: "5to periodo" },
+                { time: "13:30 - 14:30", subject: "HISTORIA CRÍTICA DE LA EDUCACIÓN BOLIVIANA", teacher: "Docente Uno Sociales", period: "6to periodo" }
+            ],
+            jueves: [
+                { time: "8:00 - 9:00", subject: "GEOMETRÍA EUCLIDIANA Y GEOMETRÍA DE NUESTRAS CULTURAS", teacher: "Docente Tres Matematica", period: "1er periodo" },
+                { time: "9:00 - 10:00", subject: "GEOMETRÍA EUCLIDIANA Y GEOMETRÍA DE NUESTRAS CULTURAS", teacher: "Docente Tres Matematica", period: "2do periodo" },
+                { time: "10:00 - 10:15", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "10:15 - 11:15", subject: "CÁLCULO APLICADA A LA TECNOLOGÍA", teacher: "Lic. Ivan Wily Copa", period: "3er periodo" },
+                { time: "11:15 - 12:15", subject: "MÚSICA", teacher: "Lic. Ivan Wily Copa", period: "4to periodo" },
+                { time: "12:15 - 12:30", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "12:30 - 13:30", subject: "TALLER I INVESTIGACIÓN EDUCATIVA Y PRODUCCIÓN DE CONOCIMIENTOS", teacher: "Lic. Marlene Mamani", period: "5to periodo" },
+                { time: "13:30 - 14:30", subject: "TALLER I INVESTIGACIÓN EDUCATIVA Y PRODUCCIÓN DE CONOCIMIENTOS", teacher: "Lic. Marlene Mamani", period: "6to periodo" }
+            ],
+            viernes: [
+                { time: "8:00 - 9:00", subject: "GEOMETRÍA EUCLIDIANA Y GEOMETRÍA DE NUESTRAS CULTURAS", teacher: "Docente Tres Matematica", period: "1er periodo" },
+                { time: "9:00 - 10:00", subject: "GEOMETRÍA EUCLIDIANA Y GEOMETRÍA DE NUESTRAS CULTURAS", teacher: "Docente Tres Matematica", period: "2do periodo" },
+                { time: "10:00 - 10:15", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "10:15 - 11:15", subject: "LO: IDENTIDAD CULTURAL CON LOS PRINCIPIOS Y VALORES", teacher: "Docente Tres Matematica", period: "3er periodo" },
+                { time: "11:15 - 12:15", subject: "MÚSICA", teacher: "Lic. Hernan Mamani", period: "4to periodo" },
+                { time: "12:15 - 12:30", subject: "RECREO", teacher: "", period: "Descanso", isBreak: true },
+                { time: "12:30 - 13:30", subject: "PEDAGOGÍAS EN LOS PROCESOS DE APRENDIZAJE", teacher: "Lic. Hernan Mamani", period: "5to periodo" },
+                { time: "13:30 - 14:30", subject: "PEDAGOGÍAS EN LOS PROCESOS DE APRENDIZAJE", teacher: "Lic Angela Uruchi", period: "6to periodo" }
+            ]
+        };
+
+        // State
+        let currentWeekOffset = 0;
+        let currentMonthOffset = 0;
+        let selectedDay = 'lunes';
+        let currentView = 'horario';
+        let reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+        let selectedDate = null;
+        let currentClassContext = null;
+        let editingClassIndex = null;
+        let editingDay = null;
+        let reminderFilter = 'all';
+
+        // Load custom schedule from localStorage or use default
+        let customSchedule = JSON.parse(localStorage.getItem('customSchedule') || 'null');
+
+        // Load custom categories or use defaults
+        let customCategories = JSON.parse(localStorage.getItem('customCategories') || JSON.stringify([
+            { id: 'tarea', name: 'Tarea', icon: '📝', color: '#4CAF50' },
+            { id: 'examen', name: 'Examen', icon: '📄', color: '#f44336' },
+            { id: 'exposicion', name: 'Exposición', icon: '🎤', color: '#2196F3' },
+            { id: 'evento', name: 'Evento', icon: '🎉', color: '#9C27B0' },
+            { id: 'congreso', name: 'Congreso', icon: '🎓', color: '#FF9800' },
+            { id: 'otro', name: 'Otro', icon: '📌', color: '#607D8B' }
+        ]));
+
+        // Load subjects catalog
+        let subjectsCatalog = JSON.parse(localStorage.getItem('subjectsCatalog') || JSON.stringify([
+            'RAZONAMIENTO LÓGICO MATEMÁTICO',
+            'HISTORIA CRÍTICA DE LA EDUCACIÓN BOLIVIANA',
+            'CÁLCULO APLICADA A LA TECNOLOGÍA',
+            'GEOMETRÍA EUCLIDIANA Y GEOMETRÍA DE NUESTRAS CULTURAS',
+            'LO: IDENTIDAD CULTURAL CON LOS PRINCIPIOS Y VALORES',
+            'FUNDAMENTOS DE LA ARITMÉTICA Y ÁLGEBRA',
+            'MODELO EDUCATIVO SOCIOCOMUNITARIO PRODUCTIVO',
+            'MÚSICA',
+            'TALLER I INVESTIGACIÓN EDUCATIVA Y PRODUCCIÓN DE CONOCIMIENTOS',
+            'PEDAGOGÍAS EN LOS PROCESOS DE APRENDIZAJE'
+        ]));
+
+        // Load teachers catalog
+        let teachersCatalog = JSON.parse(localStorage.getItem('teachersCatalog') || JSON.stringify([
+            'Docente Tres Matematica',
+            'Docente Uno Sociales',
+            'Docente Dos Musica',
+            'Lic. Ivan Wily Copa',
+            'Lic. Hernan Mamani',
+            'Lic. Eduardo Mercado',
+            'Lic. Marlene Mamani',
+            'Lic Angela Uruchi'
+        ]));
+
+        // Load periods catalog
+        let periodsCatalog = JSON.parse(localStorage.getItem('periodsCatalog') || JSON.stringify([
+            '1er periodo',
+            '2do periodo',
+            '3er periodo',
+            '4to periodo',
+            '5to periodo',
+            '6to periodo',
+            '7mo periodo',
+            '8vo periodo',
+            '9no periodo',
+            'Descanso'
+        ]));
+
+        // Load time slots catalog
+        let timeSlotsCatalog = JSON.parse(localStorage.getItem('timeSlotsCatalog') || JSON.stringify([
+            '8:00 - 9:00',
+            '9:00 - 10:00',
+            '10:00 - 10:15',
+            '10:15 - 11:15',
+            '11:15 - 12:15',
+            '12:15 - 12:30',
+            '12:30 - 13:30',
+            '13:30 - 14:30',
+            '14:30 - 15:30',
+            '15:30 - 16:30',
+            '16:30 - 17:30'
+        ]));
+
+        // Load attendance records
+        let attendanceRecords = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
+        
+        // Load students list
+        let studentsList = JSON.parse(localStorage.getItem('studentsList') || JSON.stringify([
+            'Yo (Mi asistencia)'
+        ]));
+
+        // Current attendance session
+        let currentAttendanceDate = null;
+        let currentAttendanceSubject = null;
+        let currentSessionAttendance = {};
+
+        // Evaluation criteria
+        let evaluationCriteria = JSON.parse(localStorage.getItem('evaluationCriteria') || JSON.stringify([
+            { id: 'asistencia', name: 'Asistencia', percentage: 20, maxScore: 100 },
+            { id: 'participacion', name: 'Participación', percentage: 20, maxScore: 100 },
+            { id: 'tareas', name: 'Tareas', percentage: 30, maxScore: 100 },
+            { id: 'examenes', name: 'Exámenes', percentage: 30, maxScore: 100 }
+        ]));
+
+        // Student grades
+        let studentGrades = JSON.parse(localStorage.getItem('studentGrades') || '{}');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initTabs();
+            initNavigation();
+            updateWeekDisplay();
+            renderSchedule();
+            updateCalendar();
+            renderReminders();
+            setTodayDate();
+            populateCategorySelect();
+        });
+
+        function initTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedDay = this.dataset.day;
+                    renderSchedule();
+                });
+            });
+        }
+
+        function initNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    currentView = this.dataset.view;
+                    
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.getElementById(currentView + '-view').classList.add('active');
+                    
+                    if (currentView === 'calendario') {
+                        updateCalendar();
+                    } else if (currentView === 'recordatorios') {
+                        renderReminders();
+                    } else if (currentView === 'asistencia') {
+                        renderAttendance();
+                        populateAttendanceSubjectFilter();
+                    }
+                });
+            });
+        }
+
+        function changeWeek(offset) {
+            currentWeekOffset += offset;
+            updateWeekDisplay();
+        }
+
+        function updateWeekDisplay() {
+            const today = new Date();
+            today.setDate(today.getDate() + (currentWeekOffset * 7));
+            
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - today.getDay() + 1);
+            
+            const friday = new Date(monday);
+            friday.setDate(monday.getDate() + 4);
+            
+            const options = { day: 'numeric', month: 'short' };
+            document.getElementById('current-week').textContent = 
+                `${monday.toLocaleDateString('es-BO', options)} - ${friday.toLocaleDateString('es-BO', options)}`;
+        }
+
+        function renderSchedule() {
+            const content = document.getElementById('schedule-content');
+            const schedule = customSchedule || scheduleData;
+            const classes = schedule[selectedDay] || [];
+            
+            // Get current time
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+            const currentTimeValue = currentHours * 60 + currentMinutes;
+            
+            // Check if today matches selected day
+            const today = new Date().getDay();
+            const dayMap = { 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes' };
+            const isToday = dayMap[today] === selectedDay;
+            
+            // Add debug info banner
+            const dayIndexMap = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'jueves': 4, 'viernes': 5 };
+            const selectedDayIndex = dayIndexMap[selectedDay];
+            const dayStatus = selectedDayIndex < today ? '✅ DÍA PASADO (todo tachado)' : 
+                             selectedDayIndex === today ? '🟢 DÍA ACTUAL (progreso en tiempo real)' :
+                             '⏳ DÍA FUTURO (todo sin tachar)';
+            
+            const debugInfo = `
+                <div style="background: #E3F2FD; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 12px;">
+                    <strong>🕐 Hora actual:</strong> ${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}<br>
+                    <strong>📅 Hoy es:</strong> ${dayMap[today] || 'Fin de semana'} (día ${today})<br>
+                    <strong>👀 Viendo:</strong> ${selectedDay} (día ${selectedDayIndex})<br>
+                    <strong>📊 Estado:</strong> ${dayStatus}
+                </div>
+            `;
+            
+            content.innerHTML = debugInfo + classes.map((cls, idx) => {
+                // Check if this is the current period OR if this day already passed
+                let isCurrent = false;
+                let isPast = false;
+                
+                // Check if the entire day is in the past
+                const todayDate = new Date();
+                todayDate.setHours(0, 0, 0, 0);
+                
+                const dayIndexMap = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'jueves': 4, 'viernes': 5 };
+                const selectedDayIndex = dayIndexMap[selectedDay];
+                const currentDayIndex = today;
+                
+                // If selected day is before current day in the week, mark as past
+                if (selectedDayIndex < currentDayIndex) {
+                    isPast = true;
+                } else if (isToday) {
+                    // Only check times if it's today
+                    const times = cls.time.split(' - ');
+                    const [startH, startM] = times[0].split(':').map(Number);
+                    const [endH, endM] = times[1].split(':').map(Number);
+                    const startTimeValue = startH * 60 + startM;
+                    const endTimeValue = endH * 60 + endM;
+                    
+                    if (currentTimeValue >= startTimeValue && currentTimeValue < endTimeValue) {
+                        isCurrent = true;
+                    } else if (currentTimeValue >= endTimeValue) {
+                        isPast = true;
+                    }
+                }
+                
+                if (cls.isBreak) {
+                    return `
+                        <div class="schedule-card break ${isCurrent ? 'current-period' : ''} ${isPast ? 'past-period' : ''}">
+                            <div class="time">☕ ${cls.time}</div>
+                            <div class="subject">${cls.subject}</div>
+                            ${isCurrent ? '<div class="current-badge">EN CURSO 🟢</div>' : ''}
+                            ${isPast ? '<div class="past-badge">✅ COMPLETADO</div>' : ''}
+                        </div>
+                    `;
+                }
+                
+                // Check if this class is part of a merged group (consecutive periods of same subject)
+                let mergedClass = '';
+                const prevClass = idx > 0 ? classes[idx - 1] : null;
+                const nextClass = idx < classes.length - 1 ? classes[idx + 1] : null;
+                
+                const isPrevSame = prevClass && !prevClass.isBreak && prevClass.subject === cls.subject && prevClass.teacher === cls.teacher;
+                const isNextSame = nextClass && !nextClass.isBreak && nextClass.subject === cls.subject && nextClass.teacher === cls.teacher;
+                
+                if (!isPrevSame && isNextSame) {
+                    mergedClass = 'merged-start';
+                } else if (isPrevSame && isNextSame) {
+                    mergedClass = 'merged-middle';
+                } else if (isPrevSame && !isNextSame) {
+                    mergedClass = 'merged-end';
+                }
+                
+                return `
+                    <div class="schedule-card ${mergedClass} ${isCurrent ? 'current-period' : ''} ${isPast ? 'past-period' : ''}" onclick="openClassModal('${selectedDay}', ${idx})">
+                        <div class="period">${cls.period}</div>
+                        <div class="time">⏰ ${cls.time}</div>
+                        <div class="subject">${cls.subject}</div>
+                        <div class="teacher">👨‍🏫 ${cls.teacher}</div>
+                        ${isCurrent ? '<div class="current-badge">EN CURSO 🟢</div>' : ''}
+                        ${isPast ? '<div class="past-badge">✅ COMPLETADO</div>' : ''}
+                        <div class="actions">
+                            <button class="btn-note" onclick="event.stopPropagation(); addQuickNote('${selectedDay}', ${idx})">📝 Nota Rápida</button>
+                            <button class="btn-reminder" onclick="event.stopPropagation(); addReminderFor('${cls.subject.replace(/'/g, "\\'")}', '${selectedDay}')">⏰ Recordar</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Auto-refresh every minute to update highlighting
+            if (isToday && currentView === 'horario') {
+                setTimeout(() => renderSchedule(), 60000);
+            }
+        }
+
+        function changeMonth(offset) {
+            currentMonthOffset += offset;
+            updateCalendar();
+        }
+
+        function updateCalendar() {
+            const today = new Date();
+            const targetDate = new Date(today.getFullYear(), today.getMonth() + currentMonthOffset, 1);
+            
+            const year = targetDate.getFullYear();
+            const month = targetDate.getMonth();
+            
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                              'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            
+            document.getElementById('current-month').textContent = `${monthNames[month]} ${year}`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            const daysContainer = document.getElementById('calendar-days');
+            daysContainer.innerHTML = '';
+            
+            // Empty cells for days before month starts
+            for (let i = 0; i < firstDay; i++) {
+                daysContainer.innerHTML += '<div class="day"></div>';
+            }
+            
+            // Days of month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = date.toISOString().split('T')[0];
+                const hasEvent = reminders.some(r => r.date === dateStr);
+                const isToday = dateStr === new Date().toISOString().split('T')[0];
+                const isSelected = selectedDate === dateStr;
+                
+                const classes = ['day'];
+                if (isToday) classes.push('today');
+                if (isSelected) classes.push('selected');
+                if (hasEvent) classes.push('has-event');
+                
+                daysContainer.innerHTML += `
+                    <div class="${classes.join(' ')}" onclick="selectDate('${dateStr}')">${day}</div>
+                `;
+            }
+            
+            showEventsForDate(selectedDate || new Date().toISOString().split('T')[0]);
+        }
+
+        function selectDate(dateStr) {
+            selectedDate = dateStr;
+            updateCalendar();
+        }
+
+        function showEventsForDate(dateStr) {
+            const dayEvents = document.getElementById('day-events');
+            const events = reminders.filter(r => r.date === dateStr);
+            
+            if (events.length === 0) {
+                dayEvents.innerHTML = '';
+                return;
+            }
+            
+            const date = new Date(dateStr);
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            
+            dayEvents.innerHTML = `
+                <h3 style="margin-bottom: 15px; font-size: 16px;">
+                    ${date.toLocaleDateString('es-BO', options)}
+                </h3>
+                ${events.map(event => {
+                    const category = getCategoryById(event.type);
+                    return `
+                        <div class="reminder-item ${event.type} ${event.completed ? 'completed' : ''}">
+                            <div class="category-badge" style="background: ${category.color}22; color: ${category.color};">
+                                ${category.icon} ${category.name.toUpperCase()}
+                            </div>
+                            <div class="title">${event.title}</div>
+                            ${event.subject ? `<div style="font-size: 13px; color: #666;">${event.subject}</div>` : ''}
+                            ${event.description ? `<div style="font-size: 13px; margin-top: 5px;">${event.description}</div>` : ''}
+                            ${event.time ? `<div class="date">⏰ ${event.time}</div>` : ''}
+                        </div>
+                    `;
+                }).join('')}
+            `;
+        }
+
+        function renderReminders() {
+            const content = document.getElementById('reminders-content');
+            
+            // Filter reminders
+            let filteredReminders = reminders;
+            if (reminderFilter === 'pending') {
+                filteredReminders = reminders.filter(r => !r.completed);
+            } else if (reminderFilter === 'completed') {
+                filteredReminders = reminders.filter(r => r.completed);
+            }
+            
+            if (filteredReminders.length === 0) {
+                const emptyMessage = reminderFilter === 'completed' ? 
+                    'No hay recordatorios completados' : 
+                    reminderFilter === 'pending' ? 
+                    'No hay recordatorios pendientes' : 
+                    'No hay recordatorios';
+                
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📝</div>
+                        <div>${emptyMessage}</div>
+                        <div style="font-size: 13px; margin-top: 5px;">Toca el botón + para agregar uno</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort by date
+            const sorted = [...filteredReminders].sort((a, b) => {
+                // Completed items go to the end
+                if (a.completed && !b.completed) return 1;
+                if (!a.completed && b.completed) return -1;
+                return new Date(a.date) - new Date(b.date);
+            });
+            
+            content.innerHTML = sorted.map((reminder, originalIdx) => {
+                const actualIdx = reminders.findIndex(r => r.id === reminder.id);
+                const date = new Date(reminder.date);
+                const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+                const category = getCategoryById(reminder.type);
+                
+                return `
+                    <div class="reminder-item ${reminder.type} ${reminder.completed ? 'completed' : ''}">
+                        <div class="category-badge" style="background: ${category.color}22; color: ${category.color};">
+                            ${category.icon} ${category.name.toUpperCase()}
+                        </div>
+                        <div class="title">${reminder.title}</div>
+                        ${reminder.subject ? `<div style="font-size: 13px; color: #666; margin-bottom: 5px;">${reminder.subject}</div>` : ''}
+                        ${reminder.description ? `<div style="font-size: 13px; margin-bottom: 5px;">${reminder.description}</div>` : ''}
+                        <div class="date">📅 ${date.toLocaleDateString('es-BO', options)} ${reminder.time ? `⏰ ${reminder.time}` : ''}</div>
+                        
+                        <div class="reminder-actions">
+                            <button class="btn-complete" onclick="toggleComplete(${actualIdx})">
+                                ${reminder.completed ? '↩️ Desmarcar' : '✅ Completar'}
+                            </button>
+                            <button class="btn-delete" onclick="deleteReminder(${actualIdx})">
+                                🗑 Eliminar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getCategoryById(id) {
+            return customCategories.find(c => c.id === id) || customCategories[customCategories.length - 1];
+        }
+
+        function toggleComplete(idx) {
+            reminders[idx].completed = !reminders[idx].completed;
+            localStorage.setItem('reminders', JSON.stringify(reminders));
+            renderReminders();
+            updateCalendar();
+        }
+
+        function filterReminders(filter) {
+            reminderFilter = filter;
+            
+            // Update button styles
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.dataset.filter === filter) {
+                    btn.style.background = 'var(--primary)';
+                    btn.style.color = 'white';
+                } else {
+                    btn.style.background = '#f0f0f0';
+                    btn.style.color = '#666';
+                }
+            });
+            
+            renderReminders();
+        }
+
+        function openCategoryManager() {
+            document.getElementById('category-modal').classList.add('active');
+            renderCategoriesList();
+        }
+
+        function closeCategoryManager() {
+            document.getElementById('category-modal').classList.remove('active');
+        }
+
+        function renderCategoriesList() {
+            const listHTML = customCategories.map((cat, idx) => `
+                <div style="background: ${cat.color}11; border: 2px solid ${cat.color}33; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 24px;">${cat.icon}</span>
+                        <div>
+                            <div style="font-weight: 600; color: ${cat.color};">${cat.name}</div>
+                            <div style="font-size: 11px; color: #666;">ID: ${cat.id}</div>
+                        </div>
+                    </div>
+                    ${idx >= 3 ? `
+                        <button onclick="deleteCategory(${idx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer; font-weight: 500;">
+                            🗑️ Eliminar
+                        </button>
+                    ` : '<div style="font-size: 11px; color: #999;">Predeterminada</div>'}
+                </div>
+            `).join('');
+            
+            document.getElementById('categories-list').innerHTML = listHTML;
+        }
+
+        function addNewCategory() {
+            const name = document.getElementById('new-category-name').value.trim();
+            const icon = document.getElementById('new-category-icon').value.trim();
+            const color = document.getElementById('new-category-color').value;
+            
+            if (!name || !icon) {
+                alert('Por favor completa el nombre y el ícono');
+                return;
+            }
+            
+            const id = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            
+            // Check if ID already exists
+            if (customCategories.find(c => c.id === id)) {
+                alert('Ya existe una categoría con ese nombre');
+                return;
+            }
+            
+            customCategories.push({
+                id: id,
+                name: name,
+                icon: icon,
+                color: color
+            });
+            
+            localStorage.setItem('customCategories', JSON.stringify(customCategories));
+            
+            // Clear form
+            document.getElementById('new-category-name').value = '';
+            document.getElementById('new-category-icon').value = '';
+            document.getElementById('new-category-color').value = '#2196F3';
+            
+            renderCategoriesList();
+            populateCategorySelect();
+            
+            alert('✅ Categoría agregada');
+        }
+
+        function deleteCategory(idx) {
+            if (idx < 3) {
+                alert('No puedes eliminar las categorías predeterminadas');
+                return;
+            }
+            
+            const category = customCategories[idx];
+            
+            // Check if any reminders use this category
+            const usageCount = reminders.filter(r => r.type === category.id).length;
+            if (usageCount > 0) {
+                if (!confirm(`Esta categoría está siendo usada en ${usageCount} recordatorio(s). ¿Estás seguro de eliminarla? Los recordatorios cambiarán a "Otro".`)) {
+                    return;
+                }
+                
+                // Update reminders to use 'otro'
+                reminders.forEach(r => {
+                    if (r.type === category.id) {
+                        r.type = 'otro';
+                    }
+                });
+                localStorage.setItem('reminders', JSON.stringify(reminders));
+            }
+            
+            customCategories.splice(idx, 1);
+            localStorage.setItem('customCategories', JSON.stringify(customCategories));
+            
+            renderCategoriesList();
+            populateCategorySelect();
+            renderReminders();
+            
+            alert('✅ Categoría eliminada');
+        }
+
+        function populateCategorySelect() {
+            const select = document.getElementById('reminder-type');
+            select.innerHTML = customCategories.map(cat => 
+                `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`
+            ).join('');
+        }
+
+        function populateReminderSubjectSelect() {
+            const select = document.getElementById('reminder-subject');
+            select.innerHTML = '<option value="">Seleccionar materia (opcional)</option>' +
+                subjectsCatalog.map(subject => 
+                    `<option value="${subject}">${subject}</option>`
+                ).join('');
+        }
+
+        function openModal() {
+            document.getElementById('reminder-modal').classList.add('active');
+            populateCategorySelect();
+            populateReminderSubjectSelect();
+        }
+
+        function closeModal() {
+            document.getElementById('reminder-modal').classList.remove('active');
+            clearForm();
+        }
+
+        function closeModal() {
+            document.getElementById('reminder-modal').classList.remove('active');
+            clearForm();
+        }
+
+        function openClassModal(day, idx) {
+            const schedule = customSchedule || scheduleData;
+            const cls = schedule[day][idx];
+            if (cls.isBreak) return;
+            
+            currentClassContext = { day, idx, class: cls };
+            
+            document.getElementById('class-modal-title').textContent = cls.subject;
+            document.getElementById('class-modal-content').innerHTML = `
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
+                        <strong>📅 Horario:</strong> ${cls.time}
+                    </div>
+                    <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
+                        <strong>👨‍🏫 Docente:</strong> ${cls.teacher}
+                    </div>
+                    <div style="font-size: 13px; color: #666;">
+                        <strong>📍 Período:</strong> ${cls.period}
+                    </div>
+                </div>
+                <div style="background: white; border: 2px dashed #ddd; border-radius: 8px; padding: 15px; text-align: center;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                        Agrega notas, tareas o recordatorios para esta materia
+                    </div>
+                    <button onclick="addQuickNote('${day}', ${idx})" style="padding: 10px 20px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-weight: 500; cursor: pointer; margin-right: 10px;">
+                        📝 Nota Rápida
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('class-modal').classList.add('active');
+        }
+
+        function closeClassModal() {
+            document.getElementById('class-modal').classList.remove('active');
+            currentClassContext = null;
+        }
+
+        function openSettings() {
+            document.getElementById('settings-modal').classList.add('active');
+            document.getElementById('settings-day-select').value = 'lunes';
+            switchSettingsTab('schedule');
+            loadDayForEditing();
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.remove('active');
+        }
+
+        function switchSettingsTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.settings-tab').forEach(btn => {
+                if (btn.dataset.tab === tab) {
+                    btn.style.background = 'white';
+                    btn.style.color = '#333';
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = '#666';
+                }
+            });
+
+            // Show/hide tab content
+            document.getElementById('settings-schedule-tab').style.display = tab === 'schedule' ? 'block' : 'none';
+            document.getElementById('settings-subjects-tab').style.display = tab === 'subjects' ? 'block' : 'none';
+            document.getElementById('settings-teachers-tab').style.display = tab === 'teachers' ? 'block' : 'none';
+            document.getElementById('settings-periods-tab').style.display = tab === 'periods' ? 'block' : 'none';
+            document.getElementById('settings-times-tab').style.display = tab === 'times' ? 'block' : 'none';
+
+            // Load content for the tab
+            if (tab === 'subjects') {
+                renderSubjectsList();
+            } else if (tab === 'teachers') {
+                renderTeachersList();
+            } else if (tab === 'periods') {
+                renderPeriodsList();
+            } else if (tab === 'times') {
+                renderTimeSlotsList();
+            } else if (tab === 'schedule') {
+                loadDayForEditing();
+            }
+        }
+
+        function renderPeriodsList() {
+            const listHTML = periodsCatalog.map((period, idx) => `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 14px;">${period}</div>
+                    </div>
+                    <button onclick="deletePeriod(${idx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer; font-weight: 500;">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+            
+            document.getElementById('periods-list').innerHTML = listHTML || '<div style="text-align: center; color: #999; padding: 20px;">No hay períodos. Agrega tu primer período abajo.</div>';
+        }
+
+        function renderTimeSlotsList() {
+            const listHTML = timeSlotsCatalog.map((slot, idx) => `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 14px;">⏰ ${slot}</div>
+                    </div>
+                    <button onclick="deleteTimeSlot(${idx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer; font-weight: 500;">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+            
+            document.getElementById('times-list').innerHTML = listHTML || '<div style="text-align: center; color: #999; padding: 20px;">No hay horarios. Agrega tu primer horario abajo.</div>';
+        }
+
+        function addPeriod() {
+            const name = document.getElementById('new-period-name').value.trim();
+            
+            if (!name) {
+                alert('Por favor ingresa el nombre del período');
+                return;
+            }
+
+            if (periodsCatalog.includes(name)) {
+                alert('Este período ya existe en el catálogo');
+                return;
+            }
+
+            periodsCatalog.push(name);
+            localStorage.setItem('periodsCatalog', JSON.stringify(periodsCatalog));
+
+            document.getElementById('new-period-name').value = '';
+            renderPeriodsList();
+            populatePeriodSelect();
+
+            alert('✅ Período agregado al catálogo');
+        }
+
+        function deletePeriod(idx) {
+            const period = periodsCatalog[idx];
+            
+            if (!confirm(`¿Eliminar "${period}" del catálogo?`)) {
+                return;
+            }
+
+            periodsCatalog.splice(idx, 1);
+            localStorage.setItem('periodsCatalog', JSON.stringify(periodsCatalog));
+
+            renderPeriodsList();
+            populatePeriodSelect();
+
+            alert('✅ Período eliminado');
+        }
+
+        function addTimeSlot() {
+            const start = document.getElementById('new-time-start').value;
+            const end = document.getElementById('new-time-end').value;
+            
+            if (!start || !end) {
+                alert('Por favor ingresa hora de inicio y fin');
+                return;
+            }
+
+            const slot = `${start} - ${end}`;
+
+            if (timeSlotsCatalog.includes(slot)) {
+                alert('Este horario ya existe en el catálogo');
+                return;
+            }
+
+            timeSlotsCatalog.push(slot);
+            localStorage.setItem('timeSlotsCatalog', JSON.stringify(timeSlotsCatalog));
+
+            document.getElementById('new-time-start').value = '';
+            document.getElementById('new-time-end').value = '';
+            renderTimeSlotsList();
+            populateTimeSlotSelect();
+
+            alert('✅ Horario agregado al catálogo');
+        }
+
+        function deleteTimeSlot(idx) {
+            const slot = timeSlotsCatalog[idx];
+            
+            if (!confirm(`¿Eliminar "${slot}" del catálogo?`)) {
+                return;
+            }
+
+            timeSlotsCatalog.splice(idx, 1);
+            localStorage.setItem('timeSlotsCatalog', JSON.stringify(timeSlotsCatalog));
+
+            renderTimeSlotsList();
+            populateTimeSlotSelect();
+
+            alert('✅ Horario eliminado');
+        }
+
+        function populatePeriodSelect() {
+            const select = document.getElementById('edit-period');
+            select.innerHTML = periodsCatalog.map(period => 
+                `<option value="${period}">${period}</option>`
+            ).join('');
+        }
+
+        function populateTimeSlotSelect() {
+            const select = document.getElementById('edit-time-slot');
+            select.innerHTML = timeSlotsCatalog.map(slot => 
+                `<option value="${slot}">${slot}</option>`
+            ).join('');
+        }
+
+        function openQuickAddPeriod() {
+            const name = prompt('Nombre del nuevo período (Ej: 7mo periodo):');
+            if (name && name.trim()) {
+                if (periodsCatalog.includes(name.trim())) {
+                    alert('Este período ya existe');
+                    return;
+                }
+                periodsCatalog.push(name.trim());
+                localStorage.setItem('periodsCatalog', JSON.stringify(periodsCatalog));
+                populatePeriodSelect();
+                document.getElementById('edit-period').value = name.trim();
+                alert('✅ Período agregado');
+            }
+        }
+
+        function renderAttendance() {
+            // Set default date to today if not set
+            if (!currentAttendanceDate) {
+                currentAttendanceDate = new Date().toISOString().split('T')[0];
+            }
+            
+            // Set default subject if not set
+            if (!currentAttendanceSubject && subjectsCatalog.length > 0) {
+                currentAttendanceSubject = subjectsCatalog[0];
+            }
+            
+            // Update pickers
+            document.getElementById('attendance-date-picker').value = currentAttendanceDate;
+            
+            const subjectPicker = document.getElementById('attendance-subject-picker');
+            subjectPicker.innerHTML = subjectsCatalog.map(subject => 
+                `<option value="${subject}" ${subject === currentAttendanceSubject ? 'selected' : ''}>${subject}</option>`
+            ).join('');
+            
+            // Load existing attendance for this date/subject
+            loadCurrentSessionAttendance();
+            
+            // Calculate statistics
+            const stats = calculateSessionStats();
+            
+            // Render statistics
+            document.getElementById('attendance-stats').innerHTML = `
+                <div style="background: #E8F5E9; padding: 12px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 20px; font-weight: 600; color: #2E7D32;">${stats.present}</div>
+                    <div style="font-size: 11px; color: #666; margin-top: 3px;">✅ Presente</div>
+                </div>
+                <div style="background: #FFF3E0; padding: 12px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 20px; font-weight: 600; color: #E65100;">${stats.late}</div>
+                    <div style="font-size: 11px; color: #666; margin-top: 3px;">⏰ Atrasos</div>
+                </div>
+                <div style="background: #FFEBEE; padding: 12px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 20px; font-weight: 600; color: #C62828;">${stats.absent}</div>
+                    <div style="font-size: 11px; color: #666; margin-top: 3px;">❌ Faltas</div>
+                </div>
+                <div style="background: #E3F2FD; padding: 12px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 20px; font-weight: 600; color: #1565C0;">${stats.justified}</div>
+                    <div style="font-size: 11px; color: #666; margin-top: 3px;">📋 Justif.</div>
+                </div>
+            `;
+            
+            // Render student roster
+            renderStudentRoster();
+        }
+
+        function loadCurrentSessionAttendance() {
+            currentSessionAttendance = {};
+            
+            // Load from saved records
+            attendanceRecords.forEach(record => {
+                if (record.date === currentAttendanceDate && record.subject === currentAttendanceSubject) {
+                    currentSessionAttendance[record.student] = {
+                        status: record.status,
+                        notes: record.notes || '',
+                        id: record.id
+                    };
+                }
+            });
+        }
+
+        function calculateSessionStats() {
+            const stats = { present: 0, late: 0, absent: 0, justified: 0 };
+            
+            Object.values(currentSessionAttendance).forEach(att => {
+                if (att.status === 'present') stats.present++;
+                else if (att.status === 'late') stats.late++;
+                else if (att.status === 'absent') stats.absent++;
+                else if (att.status === 'justified') stats.justified++;
+            });
+            
+            return stats;
+        }
+
+        function renderStudentRoster() {
+            const roster = document.getElementById('attendance-roster');
+            
+            if (studentsList.length === 0) {
+                roster.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">👥</div>
+                        <div>No hay estudiantes</div>
+                        <div style="font-size: 13px; margin-top: 5px;">Toca "⚙️ Estudiantes" para agregar</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            roster.innerHTML = studentsList.map(student => {
+                const attendance = currentSessionAttendance[student];
+                const status = attendance ? attendance.status : null;
+                const notes = attendance ? attendance.notes : '';
+                
+                return `
+                    <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 4px solid ${status ? getStatusColor(status) : '#ddd'};">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 15px; margin-bottom: 5px;">
+                                    ${student}
+                                </div>
+                                ${status ? `
+                                    <div style="display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${getStatusBg(status)}; color: ${getStatusColor(status)};">
+                                        ${getStatusIcon(status)} ${getStatusText(status)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        ${notes ? `
+                            <div style="background: #f5f5f5; padding: 8px; border-radius: 5px; font-size: 13px; margin-bottom: 10px;">
+                                💬 ${notes}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                            <button onclick="markAttendance('${student.replace(/'/g, "\\'")}', 'present')" style="padding: 10px; border: none; border-radius: 5px; background: ${status === 'present' ? '#4CAF50' : '#E8F5E9'}; color: ${status === 'present' ? 'white' : '#2E7D32'}; font-size: 12px; cursor: pointer; font-weight: 600;">
+                                ✅ Presente
+                            </button>
+                            <button onclick="markAttendance('${student.replace(/'/g, "\\'")}', 'late')" style="padding: 10px; border: none; border-radius: 5px; background: ${status === 'late' ? '#FF9800' : '#FFF3E0'}; color: ${status === 'late' ? 'white' : '#E65100'}; font-size: 12px; cursor: pointer; font-weight: 600;">
+                                ⏰ Atraso
+                            </button>
+                            <button onclick="markAttendance('${student.replace(/'/g, "\\'")}', 'absent')" style="padding: 10px; border: none; border-radius: 5px; background: ${status === 'absent' ? '#f44336' : '#FFEBEE'}; color: ${status === 'absent' ? 'white' : '#C62828'}; font-size: 12px; cursor: pointer; font-weight: 600;">
+                                ❌ Falta
+                            </button>
+                            <button onclick="markAttendance('${student.replace(/'/g, "\\'")}', 'justified')" style="padding: 10px; border: none; border-radius: 5px; background: ${status === 'justified' ? '#2196F3' : '#E3F2FD'}; color: ${status === 'justified' ? 'white' : '#1565C0'}; font-size: 12px; cursor: pointer; font-weight: 600;">
+                                📋 Justif.
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                present: '#4CAF50',
+                late: '#FF9800',
+                absent: '#f44336',
+                justified: '#2196F3'
+            };
+            return colors[status] || '#999';
+        }
+
+        function getStatusBg(status) {
+            const colors = {
+                present: '#E8F5E9',
+                late: '#FFF3E0',
+                absent: '#FFEBEE',
+                justified: '#E3F2FD'
+            };
+            return colors[status] || '#f5f5f5';
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                present: '✅',
+                late: '⏰',
+                absent: '❌',
+                justified: '📋'
+            };
+            return icons[status] || '❓';
+        }
+
+        function getStatusText(status) {
+            const texts = {
+                present: 'Presente',
+                late: 'Atraso',
+                absent: 'Falta',
+                justified: 'Justificado'
+            };
+            return texts[status] || 'Sin marcar';
+        }
+
+        function markAttendance(student, status) {
+            // Ask for notes if late, absent, or justified
+            let notes = '';
+            if (status === 'late' || status === 'absent' || status === 'justified') {
+                const prompts = {
+                    late: '⏰ Motivo del atraso (opcional):',
+                    absent: '❌ Motivo de la falta (opcional):',
+                    justified: '📋 Justificación:'
+                };
+                notes = prompt(prompts[status]) || '';
+            }
+            
+            // Update or create record
+            const existingRecord = attendanceRecords.find(r => 
+                r.date === currentAttendanceDate && 
+                r.subject === currentAttendanceSubject && 
+                r.student === student
+            );
+            
+            if (existingRecord) {
+                existingRecord.status = status;
+                existingRecord.notes = notes;
+            } else {
+                attendanceRecords.push({
+                    id: Date.now(),
+                    date: currentAttendanceDate,
+                    subject: currentAttendanceSubject,
+                    student: student,
+                    status: status,
+                    notes: notes
+                });
+            }
+            
+            localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+            
+            // Reload current session
+            renderAttendance();
+        }
+
+        function updateAttendanceDate() {
+            currentAttendanceDate = document.getElementById('attendance-date-picker').value;
+            renderAttendance();
+        }
+
+        function updateAttendanceSubject() {
+            currentAttendanceSubject = document.getElementById('attendance-subject-picker').value;
+            renderAttendance();
+        }
+
+        function markAllPresent() {
+            if (!confirm('¿Marcar TODOS los estudiantes como PRESENTES?')) {
+                return;
+            }
+            
+            studentsList.forEach(student => {
+                const existingRecord = attendanceRecords.find(r => 
+                    r.date === currentAttendanceDate && 
+                    r.subject === currentAttendanceSubject && 
+                    r.student === student
+                );
+                
+                if (existingRecord) {
+                    existingRecord.status = 'present';
+                    existingRecord.notes = '';
+                } else {
+                    attendanceRecords.push({
+                        id: Date.now() + Math.random(),
+                        date: currentAttendanceDate,
+                        subject: currentAttendanceSubject,
+                        student: student,
+                        status: 'present',
+                        notes: ''
+                    });
+                }
+            });
+            
+            localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+            renderAttendance();
+            
+            alert('✅ Todos marcados como presentes');
+        }
+
+        function clearAllAttendance() {
+            if (!confirm('¿Limpiar toda la asistencia de esta sesión?')) {
+                return;
+            }
+            
+            attendanceRecords = attendanceRecords.filter(r => 
+                !(r.date === currentAttendanceDate && r.subject === currentAttendanceSubject)
+            );
+            
+            localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+            renderAttendance();
+            
+            alert('🔄 Asistencia limpiada');
+        }
+
+        function openAttendanceHistory() {
+            document.getElementById('attendance-history-modal').classList.add('active');
+            
+            // Populate subject filter
+            document.getElementById('history-subject-filter').innerHTML = 
+                '<option value="">Todas las materias</option>' +
+                subjectsCatalog.map(subject => 
+                    `<option value="${subject}">${subject}</option>`
+                ).join('');
+            
+            renderAttendanceHistory();
+        }
+
+        function closeAttendanceHistory() {
+            document.getElementById('attendance-history-modal').classList.remove('active');
+        }
+
+        function filterHistory() {
+            renderAttendanceHistory();
+        }
+
+        function renderAttendanceHistory() {
+            const content = document.getElementById('attendance-history-content');
+            const filter = document.getElementById('history-subject-filter').value;
+            
+            let filtered = attendanceRecords;
+            if (filter) {
+                filtered = attendanceRecords.filter(r => r.subject === filter);
+            }
+            
+            if (filtered.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📊</div>
+                        <div>No hay historial</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Group by date and subject
+            const grouped = {};
+            filtered.forEach(record => {
+                const key = `${record.date}|${record.subject}`;
+                if (!grouped[key]) {
+                    grouped[key] = [];
+                }
+                grouped[key].push(record);
+            });
+            
+            // Sort by date descending
+            const sortedKeys = Object.keys(grouped).sort((a, b) => {
+                const dateA = a.split('|')[0];
+                const dateB = b.split('|')[0];
+                return new Date(dateB) - new Date(dateA);
+            });
+            
+            content.innerHTML = sortedKeys.map(key => {
+                const [date, subject] = key.split('|');
+                const records = grouped[key];
+                const dateObj = new Date(date);
+                const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+                
+                const stats = {
+                    present: records.filter(r => r.status === 'present').length,
+                    late: records.filter(r => r.status === 'late').length,
+                    absent: records.filter(r => r.status === 'absent').length,
+                    justified: records.filter(r => r.status === 'justified').length
+                };
+                
+                return `
+                    <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 5px;">${subject}</div>
+                        <div style="font-size: 13px; color: #666; margin-bottom: 10px;">📅 ${dateObj.toLocaleDateString('es-BO', options)}</div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px;">
+                            <div style="background: #E8F5E9; padding: 8px; border-radius: 5px; text-align: center;">
+                                <div style="font-weight: 600; color: #2E7D32;">${stats.present}</div>
+                                <div style="font-size: 10px; color: #666;">Presente</div>
+                            </div>
+                            <div style="background: #FFF3E0; padding: 8px; border-radius: 5px; text-align: center;">
+                                <div style="font-weight: 600; color: #E65100;">${stats.late}</div>
+                                <div style="font-size: 10px; color: #666;">Atraso</div>
+                            </div>
+                            <div style="background: #FFEBEE; padding: 8px; border-radius: 5px; text-align: center;">
+                                <div style="font-weight: 600; color: #C62828;">${stats.absent}</div>
+                                <div style="font-size: 10px; color: #666;">Falta</div>
+                            </div>
+                            <div style="background: #E3F2FD; padding: 8px; border-radius: 5px; text-align: center;">
+                                <div style="font-weight: 600; color: #1565C0;">${stats.justified}</div>
+                                <div style="font-size: 10px; color: #666;">Justif.</div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="viewSessionDetails('${date}', '${subject.replace(/'/g, "\\'")}' )" style="width: 100%; padding: 8px; background: #f5f5f5; border: none; border-radius: 5px; color: #666; font-size: 12px; cursor: pointer; font-weight: 500;">
+                            👁️ Ver Detalles
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function viewSessionDetails(date, subject) {
+            const records = attendanceRecords.filter(r => r.date === date && r.subject === subject);
+            
+            let details = `📊 Asistencia Detallada\n\n`;
+            details += `Fecha: ${new Date(date).toLocaleDateString('es-BO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`;
+            details += `Materia: ${subject}\n\n`;
+            details += `─────────────────\n\n`;
+            
+            records.forEach(record => {
+                details += `${getStatusIcon(record.status)} ${record.student}\n`;
+                details += `   Estado: ${getStatusText(record.status)}\n`;
+                if (record.notes) {
+                    details += `   Notas: ${record.notes}\n`;
+                }
+                details += `\n`;
+            });
+            
+            alert(details);
+        }
+
+
+        // Event Listeners for modals
+        document.getElementById('take-attendance-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTakeAttendance();
+            }
+        });
+
+        document.getElementById('attendance-settings-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAttendanceSettings();
+            }
+        });
+
+        document.getElementById('attendance-history-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAttendanceHistory();
+            }
+        });
+
+        // Export to Excel function
+        function openAttendanceSettings() {
+            document.getElementById('attendance-settings-modal').classList.add('active');
+            renderStudentsList();
+        }
+
+        function closeAttendanceSettings() {
+            document.getElementById('attendance-settings-modal').classList.remove('active');
+            renderAttendance();
+        }
+
+        function renderStudentsList() {
+            const listHTML = studentsList.map((student, idx) => `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 14px;">👤 ${student}</div>
+                    </div>
+                    <button onclick="deleteStudent(${idx})" style="padding: 6px 12px; background: #FFEBEE; border: none; border-radius: 5px; color: #C62828; font-size: 12px; cursor: pointer; font-weight: 500;">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+            
+            document.getElementById('students-list').innerHTML = listHTML || '<div style="text-align: center; color: #999; padding: 20px;">No hay estudiantes. Agrega el primero abajo.</div>';
+        }
+
+        function addStudent() {
+            const name = document.getElementById('new-student-name').value.trim();
+            
+            if (!name) {
+                alert('Por favor ingresa el nombre del estudiante');
+                return;
+            }
+
+            if (studentsList.includes(name)) {
+                alert('Este estudiante ya existe');
+                return;
+            }
+
+            studentsList.push(name);
+            localStorage.setItem('studentsList', JSON.stringify(studentsList));
+
+            document.getElementById('new-student-name').value = '';
+            renderStudentsList();
+
+            alert('✅ Estudiante agregado');
+        }
+
+        function deleteStudent(idx) {
+            const student = studentsList[idx];
+            
+            if (!confirm(`¿Eliminar a "${student}"?\n\nTambién se eliminarán todos sus registros de asistencia.`)) {
+                return;
+            }
+
+            // Remove student
+            studentsList.splice(idx, 1);
+            localStorage.setItem('studentsList', JSON.stringify(studentsList));
+
+            // Remove all attendance records for this student
+            attendanceRecords = attendanceRecords.filter(r => r.student !== student);
+            localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+
+            renderStudentsList();
+
+            alert('✅ Estudiante eliminado junto con su historial');
+        }
+
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            
+            // Export attendance for each subject
+            subjectsCatalog.forEach(subject => {
+                const records = attendanceRecords.filter(r => r.subject === subject);
+                
+                if (records.length === 0) return;
+                
+                // Group by date
+                const byDate = {};
+                records.forEach(r => {
+                    if (!byDate[r.date]) byDate[r.date] = {};
+                    byDate[r.date][r.student] = {
+                        status: r.status,
+                        notes: r.notes || ''
+                    };
+                });
+                
+                const dates = Object.keys(byDate).sort();
+                
+                // Create sheet data
+                const sheetData = [
+                    ['Estudiante', ...dates.map(d => new Date(d).toLocaleDateString('es-BO'))],
+                ];
+                
+                studentsList.forEach(student => {
+                    const row = [student];
+                    dates.forEach(date => {
+                        const att = byDate[date][student];
+                        if (att) {
+                            row.push(`${getStatusText(att.status)}${att.notes ? ' - ' + att.notes : ''}`);
+                        } else {
+                            row.push('');
+                        }
+                    });
+                    sheetData.push(row);
+                });
+                
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                XLSX.utils.book_append_sheet(wb, ws, subject.substring(0, 30));
+            });
+            
+            XLSX.writeFile(wb, 'Asistencia_' + new Date().toISOString().split('T')[0] + '.xlsx');
+            alert('✅ Excel exportado correctamente');
+        }
+
+        // Initialize everything
+        renderSchedule();
+        initNavigation();
+        updateCalendar();
+        renderReminders();
+
+        // Install button for PWA
+        let deferredPrompt;
+        const installButton = document.createElement('button');
+        installButton.textContent = '⬇️ Instalar App';
+        installButton.style.cssText = 'position: fixed; bottom: 80px; right: 20px; background: #006847; color: white; border: none; padding: 15px 20px; border-radius: 50px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); cursor: pointer; font-weight: 600; z-index: 1000; display: none;';
+        document.body.appendChild(installButton);
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installButton.style.display = 'block';
+        });
+
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('App instalada');
+            }
+            deferredPrompt = null;
+            installButton.style.display = 'none';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installButton.style.display = 'none';
+            alert('✅ ¡App instalada correctamente!');
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installButton.style.display = 'none';
+        }
+
+        // Generate and inject manifest
+        const manifest = {
+            name: "Horario ESFM Simón Bolívar",
+            short_name: "Horario ESFM",
+            description: "Aplicación de horario escolar",
+            start_url: window.location.pathname,
+            display: "standalone",
+            background_color: "#006847",
+            theme_color: "#006847",
+            orientation: "portrait",
+            icons: [
+                {
+                    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%23006847'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='100' fill='white'>📅</text></svg>",
+                    sizes: "192x192",
+                    type: "image/svg+xml"
+                },
+                {
+                    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%23006847'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='300' fill='white'>📅</text></svg>",
+                    sizes: "512x512",
+                    type: "image/svg+xml"
+                }
+            ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = manifestURL;
+        document.head.appendChild(manifestLink);
+
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', (e) => {
+                    e.waitUntil(
+                        caches.open('horario-v1').then((cache) => cache.addAll(['/']))
+                    );
+                });
+                
+                self.addEventListener('fetch', (e) => {
+                    e.respondWith(
+                        caches.match(e.request).then((response) => response || fetch(e.request))
+                    );
+                });
+            `;
+            
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            const swURL = URL.createObjectURL(swBlob);
+
+            navigator.serviceWorker.register(swURL)
+                .then(() => console.log('Service Worker registrado'))
+                .catch((err) => console.log('Service Worker falló:', err));
+        }
+    </script>
+</body>
+</html>
