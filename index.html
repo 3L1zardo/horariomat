@@ -10,8 +10,12 @@
     <meta name="theme-color" content="#006847">
     <meta name="description" content="Aplicación de horario escolar con recordatorios y calendario para E.S.F.M. Simón Bolívar">
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" id="manifest-placeholder">
+    <!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
+    
+<!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
     
     <!-- Icons for iOS -->
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23006847'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='256' fill='white'>📅</text></svg>">
@@ -4409,7 +4413,7 @@ setInterval(function() {
         const manifestURL = URL.createObjectURL(manifestBlob);
         const manifestLink = document.createElement('link');
         manifestLink.rel = 'manifest';
-        manifestLink.href = manifestURL;
+        manifestLink.href = manifest;
         document.head.appendChild(manifestLink);
 
         // Service Worker
@@ -4493,5 +4497,56 @@ window.addEventListener('load', function() {
     }
 });
     </script>
+<script>
+// ============================================
+// FIREBASE PUSH NOTIFICATIONS
+// ============================================
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCE63GL0YwSvc-KTQE_RZ4AgGELFc-yUME",
+    authDomain: "horario-esfm.firebaseapp.com",
+    projectId: "horario-esfm",
+    storageBucket: "horario-esfm.firebasestorage.app",
+    messagingSenderId: "1046696947499",
+    appId: "1:1046696947499:web:8d593fcab4ef61379a9f6e",
+    measurementId: "G-NNKXJN5YDR"
+};
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
+// Clave VAPID
+const VAPID_KEY = 'BBHwc5Mppt2z98YM4uazXcDnI6luBVutOdbmcBdIg9fqGxR9avIEDeONgnq9U33vK5wbE3LpJ1LFXtAhov9qMfY';
+
+// Solicitar permiso y obtener token
+async function initFirebasePush() {
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            const token = await messaging.getToken({ vapidKey: VAPID_KEY });
+            console.log('📱 Token FCM:', token);
+            // Guarda este token para enviar notificaciones después
+            localStorage.setItem('fcmToken', token);
+            return token;
+        }
+    } catch (error) {
+        console.error('Error FCM:', error);
+    }
+}
+
+// Recibir mensajes cuando la app está ABIERTA
+messaging.onMessage((payload) => {
+    console.log('📩 Mensaje recibido:', payload);
+    const { title, body } = payload.notification;
+    new Notification(title, { 
+        body: body,
+        icon: 'icon-192.png'
+    });
+});
+
+// Iniciar cuando carga la página
+initFirebasePush();
+</script>
 </body>
 </html>
