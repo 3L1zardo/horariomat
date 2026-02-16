@@ -4438,59 +4438,7 @@ setInterval(function() {
         // Service Worker
 // Registrar Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
-        self.addEventListener('notificationclick', function(event) {
-            event.notification.close();
-            
-            const reminderId = event.notification.data.reminderId;
-            
-            if (event.action === 'complete') {
-                // Completar recordatorio
-                event.waitUntil(
-                    clients.matchAll({ type: 'window' }).then(function(clientList) {
-                        // Enviar mensaje a la app para completar
-                        for (var i = 0; i < clientList.length; i++) {
-                            var client = clientList[i];
-                            if ('focus' in client) {
-                                client.postMessage({
-                                    type: 'COMPLETE_REMINDER',
-                                    reminderId: reminderId
-                                });
-                                return client.focus();
-                            }
-                        }
-                        // Si no hay ventana abierta, abrir una
-                        if (clients.openWindow) {
-                            return clients.openWindow('/?complete=' + reminderId);
-                        }
-                    })
-                );
-            } else {
-                // Solo abrir la app
-                event.waitUntil(
-                    clients.matchAll({ type: 'window' }).then(function(clientList) {
-                        for (var i = 0; i < clientList.length; i++) {
-                            var client = clientList[i];
-                            if ('focus' in client) {
-                                return client.focus();
-                            }
-                        }
-                        if (clients.openWindow) {
-                            return clients.openWindow('/');
-                        }
-                    })
-                );
-            }
-        });
-        
-        self.addEventListener('install', function(event) {
-            self.skipWaiting();
-        });
-        
-        self.addEventListener('activate', function(event) {
-            event.waitUntil(clients.claim());
-        });
-    `))
+    navigator.serviceWorker.register('/sw.js')
     .then(reg => console.log('✅ Service Worker registrado'))
     .catch(err => console.log('❌ Error Service Worker:', err));
 }
