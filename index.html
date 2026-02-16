@@ -3223,46 +3223,69 @@ function saveClass() {
         }
 
         // Schedule notification for a reminder
-        function scheduleNotification(reminder) {
-            if (!reminder.date || !reminder.time) return;
-            
-            const reminderDateTime = new Date(`${reminder.date}T${reminder.time}`);
-            const now = new Date();
-            const timeUntilReminder = reminderDateTime - now;
-            
-            // Only schedule if in the future
-            if (timeUntilReminder > 0) {
-                // Schedule for exact time
-                setTimeout(() => {
-                    showNotification(reminder);
-                }, timeUntilReminder);
-                
-                // Also schedule 1 hour before
-                const oneHourBefore = timeUntilReminder - (60 * 60 * 1000);
-                if (oneHourBefore > 0) {
-                    setTimeout(() => {
-                        showNotification(reminder, '⏰ Recordatorio en 1 hora');
-                    }, oneHourBefore);
-                }
-            }
-        }
+function scheduleNotification(reminder) {
+    if (!reminder.date || !reminder.time) return;
+    
+    // Guardar en localStorage para checkeo periódico
+    const scheduled = JSON.parse(localStorage.getItem('scheduledNotifications') || '[]');
+    if (!scheduled.find(s => s.id === reminder.id)) {
+        scheduled.push({
+            id: reminder.id,
+            datetime: `${reminder.date}T${reminder.time}`,
+            notified: false
+        });
+        localStorage.setItem('scheduledNotifications', JSON.stringify(scheduled));
+    }
+    
+    const reminderDateTime = new Date(`${reminder.date}T${reminder.time}`);
+    const now = new Date();
+    const timeUntilReminder = reminderDateTime - now;
+    
+    // Schedule para tiempos cortos (menos de 24 horas)
+    if (timeUntilReminder > 0 && timeUntilReminder < 86400000) {
+        setTimeout(() => {
+            showNotification(reminder);
+        }, timeUntilReminder);
 
         // Show notification
-        function showNotification(reminder, customTitle = null) {
-            if (Notification.permission !== 'granted') return;
-            
-            const category = getCategoryById(reminder.type);
-            const title = customTitle || `${category.icon} ${category.name}`;
-            const body = `${reminder.title}\n${reminder.subject ? '📚 ' + reminder.subject : ''}\n${reminder.description || ''}`;
-            
-            const notification = new Notification(title, {
+async function showNotification(reminder, customTitle = null) {
+    if (Notification.permission !== 'granted') return;
+    
+    const category = getCategoryById(reminder.type);
+    const title = customTitle || `${category.icon} ${category.name}`;
+    const body = `${reminder.title}\n${reminder.subject ? '📚 ' + reminder.subject : ''}\n${reminder.description || ''}`;
+    
+    // Usar Service Worker si está disponible
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification(title, {
                 body: body,
                 icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23006847"/><text x="50" y="50" text-anchor="middle" dominant-baseline="middle" font-size="50" fill="white">📅</text></svg>',
                 badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23006847"/></svg>',
                 tag: `reminder-${reminder.id}`,
                 requireInteraction: true,
-                vibrate: [200, 100, 200]
+                vibrate: [200, 100, 200],
+                data: { reminderId: reminder.id },
+                actions: [
+                    { action: 'complete', title: '✅ Completar', icon: '✅' },
+                    { action: 'view', title: '👁️ Ver detalles', icon: '👁️' }
+                ]
             });
+            return;
+        } catch (e) {
+            console.log('Service Worker notification failed, using fallback', e);
+        }
+    }
+    
+    // Fallback para navegadores sin Service Worker
+    const notification = new Notification(title, {
+        body: body,
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23006847"/><text x="50" y="50" text-anchor="middle" dominant-baseline="middle" font-size="50" fill="white">📅</text></svg>',
+        tag: `reminder-${reminder.id}`,
+        requireInteraction: true,
+        vibrate: [200, 100, 200]
+    });
             
             notification.onclick = function() {
                 window.focus();
@@ -3272,29 +3295,37 @@ function saveClass() {
             };
         }
 
-        // Check and show pending notifications
-        function checkPendingNotifications() {
-            const now = new Date();
-            const nowStr = now.toISOString().split('T')[0];
-            const nowTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+// Verificar notificaciones programadas cada minuto
+setInterval(function() {
+    const now = new Date();
+    const scheduled = JSON.parse(localStorage.getItem('scheduledNotifications') || '[]');
+    
+    scheduled.forEach(function(item, index) {
+        if (!item.notified) {
+            const scheduledTime = new Date(item.datetime);
+            const diff = scheduledTime - now;
             
-            reminders.forEach(reminder => {
-                if (!reminder.completed && reminder.date && reminder.time) {
-                    // Check if it's time for this reminder
-                    if (reminder.date === nowStr && reminder.time <= nowTime) {
-                        const reminderTime = reminder.time;
-                        const timeParts = reminderTime.split(':');
-                        const reminderMinutes = parseInt(timeParts[0]) * 60 + parseInt(timeParts[1]);
-                        const nowMinutes = now.getHours() * 60 + now.getMinutes();
-                        
-                        // Show if within 5 minutes
-                        if (Math.abs(reminderMinutes - nowMinutes) <= 5) {
-                            showNotification(reminder);
-                        }
-                    }
+            // Notificar si es tiempo (con 1 minuto de margen)
+            if (diff <= 60000 && diff >= -60000) {
+                const reminder = reminders.find(r => r.id === item.id);
+                if (reminder && !reminder.completed) {
+                    showNotification(reminder);
+                    item.notified = true;
+                    localStorage.setItem('scheduledNotifications', JSON.stringify(scheduled));
                 }
-            });
+            }
         }
+    });
+    
+    // Limpiar notificaciones antiguas (más de 1 día en el pasado)
+    const filtered = scheduled.filter(item => {
+        const scheduledTime = new Date(item.datetime);
+        return (now - scheduledTime) < 86400000;
+    });
+    if (filtered.length !== scheduled.length) {
+        localStorage.setItem('scheduledNotifications', JSON.stringify(filtered));
+    }
+}, 30000); // Cada 30 segundos
 
         // DARK MODE FUNCTIONS
         
@@ -4405,28 +4436,97 @@ function saveClass() {
         document.head.appendChild(manifestLink);
 
         // Service Worker
-        if ('serviceWorker' in navigator) {
-            const swCode = `
-                self.addEventListener('install', (e) => {
-                    e.waitUntil(
-                        caches.open('horario-v1').then((cache) => cache.addAll(['/']))
-                    );
-                });
-                
-                self.addEventListener('fetch', (e) => {
-                    e.respondWith(
-                        caches.match(e.request).then((response) => response || fetch(e.request))
-                    );
-                });
-            `;
+// Registrar Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
+        self.addEventListener('notificationclick', function(event) {
+            event.notification.close();
             
-            const swBlob = new Blob([swCode], { type: 'application/javascript' });
-            const swURL = URL.createObjectURL(swBlob);
+            const reminderId = event.notification.data.reminderId;
+            
+            if (event.action === 'complete') {
+                // Completar recordatorio
+                event.waitUntil(
+                    clients.matchAll({ type: 'window' }).then(function(clientList) {
+                        // Enviar mensaje a la app para completar
+                        for (var i = 0; i < clientList.length; i++) {
+                            var client = clientList[i];
+                            if ('focus' in client) {
+                                client.postMessage({
+                                    type: 'COMPLETE_REMINDER',
+                                    reminderId: reminderId
+                                });
+                                return client.focus();
+                            }
+                        }
+                        // Si no hay ventana abierta, abrir una
+                        if (clients.openWindow) {
+                            return clients.openWindow('/?complete=' + reminderId);
+                        }
+                    })
+                );
+            } else {
+                // Solo abrir la app
+                event.waitUntil(
+                    clients.matchAll({ type: 'window' }).then(function(clientList) {
+                        for (var i = 0; i < clientList.length; i++) {
+                            var client = clientList[i];
+                            if ('focus' in client) {
+                                return client.focus();
+                            }
+                        }
+                        if (clients.openWindow) {
+                            return clients.openWindow('/');
+                        }
+                    })
+                );
+            }
+        });
+        
+        self.addEventListener('install', function(event) {
+            self.skipWaiting();
+        });
+        
+        self.addEventListener('activate', function(event) {
+            event.waitUntil(clients.claim());
+        });
+    `))
+    .then(reg => console.log('✅ Service Worker registrado'))
+    .catch(err => console.log('❌ Error Service Worker:', err));
+}
 
-            navigator.serviceWorker.register(swURL)
-                .then(() => console.log('Service Worker registrado'))
-                .catch((err) => console.log('Service Worker falló:', err));
+// Escuchar mensajes del Service Worker para completar recordatorios
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(event) {
+        if (event.data.type === 'COMPLETE_REMINDER') {
+            const reminderId = event.data.reminderId;
+            const index = reminders.findIndex(r => r.id === reminderId);
+            if (index !== -1) {
+                reminders[index].completed = true;
+                localStorage.setItem('reminders', JSON.stringify(reminders));
+                renderReminders();
+                updateCalendar();
+            }
         }
+    });
+}
+
+// Manejar parámetro de URL para completar recordatorio
+window.addEventListener('load', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const completeId = urlParams.get('complete');
+    if (completeId) {
+        const index = reminders.findIndex(r => r.id === parseInt(completeId));
+        if (index !== -1) {
+            reminders[index].completed = true;
+            localStorage.setItem('reminders', JSON.stringify(reminders));
+            renderReminders();
+            updateCalendar();
+            // Limpiar URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+});
     </script>
 </body>
 </html>
