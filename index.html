@@ -4963,8 +4963,10 @@ auth.onAuthStateChanged(async (user) => {
         console.log('✅ Usuario autenticado:', user.email);
 
         // Mostrar app principal
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('main-app').style.display = 'block';
+        const authScreenEl = document.getElementById('auth-screen');
+        const mainAppEl = document.getElementById('main-app');
+        if (authScreenEl) authScreenEl.style.display = 'none';
+        if (mainAppEl) mainAppEl.style.display = 'block';
 
         // Actualizar header con nombre de usuario
         const subtitle = document.querySelector('.header .subtitle');
@@ -5007,8 +5009,10 @@ auth.onAuthStateChanged(async (user) => {
         userDataUnsubscribers = [];
 
         // Mostrar pantalla de login
-        document.getElementById('auth-screen').style.display = 'flex';
-        document.getElementById('main-app').style.display = 'none';
+        const authScreenLogout = document.getElementById('auth-screen');
+        const mainAppLogout = document.getElementById('main-app');
+        if (authScreenLogout) authScreenLogout.style.display = 'flex';
+        if (mainAppLogout) mainAppLogout.style.display = 'none';
     }
 });
 
