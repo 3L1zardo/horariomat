@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Horario ESFM">
     <meta name="theme-color" content="#006847">
+    <meta name="google-site-verification" content="QVKYJpmBb5H8l-qwNZcoj81UTPMNUup9NqB9lhX2hM8" />
     <!-- Version: 2.1 - Fix auth screen cache issue -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -20,9 +21,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
-    <!-- Google API for Calendar -->
-    <script src="https://apis.google.com/js/api.js"></script>
-    
 <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     
@@ -36,6 +34,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google APIs para integración con Google Calendar -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     
     <title>Horario ESFM Simón Bolívar</title>
     <style>
@@ -1159,9 +1161,31 @@
                     💡 Tus datos están sincronizados en la nube. Puedes volver a iniciar sesión en cualquier dispositivo.
                 </p>
             </div>
+
+            <!-- Privacy Policy Link -->
+            <div style="text-align: center; padding: 20px 0 10px;">
+                <a href="/privacy-policy.html" target="_blank" rel="noopener"
+                   style="font-size: 13px; color: #666; text-decoration: underline;">
+                    Política de Privacidad
+                </a>
+                <span style="color: #ccc; margin: 0 8px;">|</span>
+                <a href="/terms.html" target="_blank" rel="noopener"
+                   style="font-size: 13px; color: #666; text-decoration: underline;">
+                    Condiciones de Servicio
+                </a>
+                <span style="color: #ccc; margin: 0 8px;">|</span>
+                <span style="font-size: 13px; color: #999;">Horario ESFM &copy; 2026</span>
+            </div>
         </div>
     </div>
     </div>
+
+    <!-- Legal Footer - always visible for Google verification -->
+    <footer id="legal-footer" style="position:fixed;bottom:60px;left:0;right:0;text-align:center;z-index:999;background:rgba(0,104,71,0.92);padding:5px 0;">
+        <a href="/privacy-policy.html" style="color:#fff;font-size:12px;text-decoration:underline;margin:0 10px;">Política de Privacidad</a>
+        <span style="color:#fff;font-size:12px;">|</span>
+        <a href="/terms.html" style="color:#fff;font-size:12px;text-decoration:underline;margin:0 10px;">Términos de Servicio</a>
+    </footer>
 
     <!-- FAB Button -->
     <button class="fab" onclick="openModal()">+</button>
@@ -3952,22 +3976,29 @@ setInterval(function() {
             // Sincronizar con Google Calendar / notificaciones (errores aquí no afectan el guardado)
             try {
                 const notificationMethod = document.getElementById('notification-method')?.value || 'web';
-                if ((notificationMethod === 'calendar' || notificationMethod === 'both') && gapiInited && gisInited) {
-                    const calendarEventId = await addToGoogleCalendar(reminder);
-                    if (calendarEventId && currentUser) {
-                        // Guardar el ID del evento de Calendar en Firestore para poder borrarlo después
-                        await db.collection('users').doc(currentUser.uid)
-                            .collection('reminders')
-                            .doc(String(reminder.id))
-                            .update({ calendarEventId });
+                if (notificationMethod === 'calendar' || notificationMethod === 'both') {
+                    if (!gapiInited || !gisInited) {
+                        // Scripts aún cargando — intentar inicializar y reintentar una vez
+                        initGoogleCalendar();
+                        await new Promise(r => setTimeout(r, 2000));
                     }
-                    if (calendarEventId) {
-                        alert('✅ Recordatorio guardado y agregado a Google Calendar.\nRecibirás notificaciones aunque el navegador esté cerrado.');
+                    if (gapiInited && gisInited) {
+                        const calendarEventId = await addToGoogleCalendar(reminder);
+                        if (calendarEventId && currentUser) {
+                            await db.collection('users').doc(currentUser.uid)
+                                .collection('reminders')
+                                .doc(String(reminder.id))
+                                .update({ calendarEventId });
+                        }
+                        if (calendarEventId) {
+                            alert('✅ Recordatorio guardado y agregado a Google Calendar.');
+                        } else {
+                            alert('✅ Recordatorio guardado.\n⚠️ No se pudo sincronizar con Google Calendar. Revisa los permisos.');
+                        }
                     } else {
-                        alert('✅ Recordatorio guardado.\n⚠️ No se pudo sincronizar con Google Calendar. Revisa la configuración.');
+                        alert('✅ Recordatorio guardado.\n⚠️ Google Calendar no está listo. Recarga la página e intenta de nuevo.');
                     }
                 } else {
-                    // Schedule enhanced notification (alarma mejorada, solo funciona con app abierta)
                     if (time) {
                         await scheduleEnhancedNotification(reminder);
                     }
@@ -5557,24 +5588,8 @@ async function scheduleEnhancedNotification(reminder) {
         return;
     }
 
-    // Obtener método de notificaciones del usuario
-    let notificationMethod = 'web'; // Default
-    if (currentUser) {
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        if (userDoc.exists) {
-            notificationMethod = userDoc.data().notificationMethod || 'web';
-        }
-    }
-
-    // Google Calendar
-    if (notificationMethod === 'calendar' || notificationMethod === 'both') {
-        await addToGoogleCalendar(reminder);
-    }
-
-    // Web Notifications
-    if (notificationMethod === 'web' || notificationMethod === 'both') {
-        scheduleWebNotification(reminder);
-    }
+    // Solo notificaciones web — Google Calendar se maneja en saveReminder
+    scheduleWebNotification(reminder);
 }
 
 /**
@@ -5684,26 +5699,38 @@ let gisInited = false;
 let tokenClient;
 
 /**
- * Inicializa Google Calendar API
+ * Callback automático: se ejecuta cuando api.js termina de cargar.
  */
-function initGoogleCalendar() {
-    // Cargar GAPI
+function gapiLoaded() {
     gapi.load('client', async () => {
         await gapi.client.init({
             apiKey: CALENDAR_API_KEY,
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
         });
         gapiInited = true;
-        console.log('✅ Google Calendar API inicializada');
+        console.log('✅ Google Calendar API (GAPI) lista');
     });
+}
 
-    // Cargar GIS (Google Identity Services)
+/**
+ * Callback automático: se ejecuta cuando gsi/client termina de cargar.
+ */
+function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CALENDAR_CLIENT_ID,
         scope: CALENDAR_SCOPES,
-        callback: '', // Se define en cada uso
+        callback: '', // Se asigna en cada uso
     });
     gisInited = true;
+    console.log('✅ Google Identity Services (GIS) listo');
+}
+
+/**
+ * Fallback manual por si los scripts aún no dispararon sus callbacks.
+ */
+function initGoogleCalendar() {
+    if (typeof gapi !== 'undefined' && !gapiInited) gapiLoaded();
+    if (typeof google !== 'undefined' && !gisInited) gisLoaded();
 }
 
 /**

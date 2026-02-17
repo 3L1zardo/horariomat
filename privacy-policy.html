@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidad - Horario ESFM</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #212121;
+            line-height: 1.7;
+        }
+        header {
+            background: #006847;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        header h1 { font-size: 22px; margin-bottom: 4px; }
+        header p { font-size: 13px; opacity: 0.85; }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 24px 16px 60px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        h2 {
+            font-size: 17px;
+            color: #006847;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #E8F5E9;
+        }
+        p { font-size: 14px; margin-bottom: 10px; color: #424242; }
+        ul { padding-left: 20px; margin-bottom: 10px; }
+        ul li { font-size: 14px; color: #424242; margin-bottom: 6px; }
+        .highlight {
+            background: #E8F5E9;
+            border-left: 4px solid #006847;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 12px 24px;
+            background: #006847;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .back-link:hover { background: #005236; }
+        .date-note {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Política de Privacidad</h1>
+    <p>Aplicación gratuita de gestión académica para docentes y estudiantes</p>
+</header>
+
+<div class="container">
+
+    <div class="card">
+        <h2>1. Información General</h2>
+        <p>
+            <strong>Horario ESFM</strong> es una aplicación web progresiva (PWA) gratuita de gestión académica
+            orientada inicialmente a la E.S.F.M. "Simón Bolívar" (La Paz, Bolivia), pero apta para cualquier
+            escuela, instituto, universidad o institución educativa. Permite gestionar horarios, asistencia,
+            calificaciones y recordatorios tanto para docentes como para estudiantes.
+        </p>
+        <div class="highlight">
+            Esta aplicación no recopila, almacena ni comparte datos personales en servidores externos,
+            salvo los indicados en la sección de autenticación.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>2. Datos que Recopilamos</h2>
+        <p>La aplicación utiliza los siguientes datos:</p>
+        <ul>
+            <li><strong>Cuenta de Google:</strong> Para la autenticación mediante Google Sign-In, utilizamos
+                tu nombre y correo electrónico de Google. No almacenamos tu contraseña.</li>
+            <li><strong>Datos académicos:</strong> Horarios, asistencia, recordatorios y calificaciones
+                que tú mismo introduces en la app.</li>
+            <li><strong>Preferencias:</strong> Configuración de tema (claro/oscuro) y preferencias de notificaciones.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>3. Almacenamiento de Datos</h2>
+        <ul>
+            <li>Los datos académicos se guardan principalmente en el <strong>almacenamiento local</strong>
+                (localStorage) de tu dispositivo.</li>
+            <li>Si iniciaste sesión con Google, algunos datos pueden sincronizarse en
+                <strong>Firebase Firestore</strong> (Google Cloud) para permitir acceso desde múltiples dispositivos.</li>
+            <li>Nadie más tiene acceso a tus datos. No los vendemos ni compartimos con terceros.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>4. Uso de Google Sign-In</h2>
+        <p>
+            Usamos Google Sign-In (OAuth 2.0) únicamente para autenticarte como usuario. Los permisos
+            solicitados son los mínimos necesarios:
+        </p>
+        <ul>
+            <li>Correo electrónico (para identificar tu cuenta)</li>
+            <li>Nombre y foto de perfil (para mostrar en la app)</li>
+        </ul>
+        <p>
+            No accedemos a tu correo, contactos, archivos de Drive ni ningún otro servicio de Google.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>5. Notificaciones</h2>
+        <p>
+            Si habilitas las notificaciones, la app puede usar las APIs de notificación del navegador
+            o Google Calendar para enviarte recordatorios. Puedes desactivarlas en cualquier momento
+            desde la sección de Configuración.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>6. Cookies y Rastreo</h2>
+        <p>
+            Esta aplicación <strong>no utiliza cookies de rastreo</strong> ni herramientas de análisis
+            de comportamiento de terceros. No rastreamos tu actividad dentro de la app.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>7. Menores de Edad</h2>
+        <p>
+            La aplicación está diseñada para uso educativo en cualquier institución académica.
+            No recopilamos intencionalmente información de menores de 13 años sin consentimiento parental.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>8. Tus Derechos</h2>
+        <p>Tienes derecho a:</p>
+        <ul>
+            <li>Acceder a todos tus datos (visibles en la app)</li>
+            <li>Eliminar tus datos locales borrando los datos del sitio en tu navegador</li>
+            <li>Cerrar sesión y revocar el acceso de Google desde
+                <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">tu cuenta de Google</a></li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>9. Cambios a esta Política</h2>
+        <p>
+            Podemos actualizar esta política de privacidad ocasionalmente. Los cambios se reflejarán
+            en esta página con una nueva fecha de actualización.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>10. Contacto</h2>
+        <p>
+            Si tienes preguntas sobre esta política de privacidad, puedes contactar al desarrollador:
+        </p>
+        <p>
+            <strong>Elizardo Quispe</strong><br>
+            <a href="mailto:elizardo.q.es@hotmail.com" style="color: #006847;">elizardo.q.es@hotmail.com</a>
+        </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 10px;">
+        <a href="/" class="back-link">← Volver a la aplicación</a>
+    </div>
+
+    <p class="date-note">Última actualización: 17 de febrero de 2026</p>
+
+</div>
+
+</body>
+</html>
