@@ -4858,20 +4858,30 @@ const CALENDAR_CLIENT_ID = '1046696947499-YOUR_OAUTH_CLIENT.apps.googleuserconte
 const CALENDAR_API_KEY = 'YOUR_API_KEY'; // Necesitarás configurar esto
 const CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
-// Solicitar permiso y obtener token
+// Solicitar permiso y obtener token FCM, guardarlo en Firestore para push en background
 async function initFirebasePush() {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
             const token = await messaging.getToken({ vapidKey: VAPID_KEY });
-            console.log('📱 Token FCM:', token);
-            // Guarda este token para enviar notificaciones después
+            if (!token) return null;
+            console.log('📱 Token FCM obtenido');
             localStorage.setItem('fcmToken', token);
+
+            // Guardar token en Firestore para que el servidor pueda enviar notificaciones
+            if (currentUser) {
+                await db.collection('users').doc(currentUser.uid).set(
+                    { fcmToken: token, fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { merge: true }
+                );
+                console.log('✅ Token FCM guardado en Firestore');
+            }
             return token;
         }
     } catch (error) {
         console.error('Error FCM:', error);
     }
+    return null;
 }
 
 // Recibir mensajes cuando la app está ABIERTA
@@ -4950,6 +4960,9 @@ auth.onAuthStateChanged(async (user) => {
 
         // Iniciar listeners de sincronización en tiempo real
         setupRealtimeListeners(user.uid);
+
+        // Registrar token FCM para notificaciones en segundo plano
+        initFirebasePush();
 
     } else {
         currentUser = null;
