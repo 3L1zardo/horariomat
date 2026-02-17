@@ -68,6 +68,8 @@ node_modules/
 # Firebase Service Account (credenciales sensibles)
 *serviceAccount*.json
 serviceAccountKey.json
+*firebase-adminsdk*.json
+horariomat
 
 # dataconnect generated files
 .dataconnect
