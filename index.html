@@ -36,6 +36,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google APIs para integración con Google Calendar -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     
     <title>Horario ESFM Simón Bolívar</title>
     <style>
@@ -3958,22 +3962,29 @@ setInterval(function() {
             // Sincronizar con Google Calendar / notificaciones (errores aquí no afectan el guardado)
             try {
                 const notificationMethod = document.getElementById('notification-method')?.value || 'web';
-                if ((notificationMethod === 'calendar' || notificationMethod === 'both') && gapiInited && gisInited) {
-                    const calendarEventId = await addToGoogleCalendar(reminder);
-                    if (calendarEventId && currentUser) {
-                        // Guardar el ID del evento de Calendar en Firestore para poder borrarlo después
-                        await db.collection('users').doc(currentUser.uid)
-                            .collection('reminders')
-                            .doc(String(reminder.id))
-                            .update({ calendarEventId });
+                if (notificationMethod === 'calendar' || notificationMethod === 'both') {
+                    if (!gapiInited || !gisInited) {
+                        // Scripts aún cargando — intentar inicializar y reintentar una vez
+                        initGoogleCalendar();
+                        await new Promise(r => setTimeout(r, 2000));
                     }
-                    if (calendarEventId) {
-                        alert('✅ Recordatorio guardado y agregado a Google Calendar.\nRecibirás notificaciones aunque el navegador esté cerrado.');
+                    if (gapiInited && gisInited) {
+                        const calendarEventId = await addToGoogleCalendar(reminder);
+                        if (calendarEventId && currentUser) {
+                            await db.collection('users').doc(currentUser.uid)
+                                .collection('reminders')
+                                .doc(String(reminder.id))
+                                .update({ calendarEventId });
+                        }
+                        if (calendarEventId) {
+                            alert('✅ Recordatorio guardado y agregado a Google Calendar.');
+                        } else {
+                            alert('✅ Recordatorio guardado.\n⚠️ No se pudo sincronizar con Google Calendar. Revisa los permisos.');
+                        }
                     } else {
-                        alert('✅ Recordatorio guardado.\n⚠️ No se pudo sincronizar con Google Calendar. Revisa la configuración.');
+                        alert('✅ Recordatorio guardado.\n⚠️ Google Calendar no está listo. Recarga la página e intenta de nuevo.');
                     }
                 } else {
-                    // Schedule enhanced notification (alarma mejorada, solo funciona con app abierta)
                     if (time) {
                         await scheduleEnhancedNotification(reminder);
                     }
@@ -5674,31 +5685,38 @@ let gisInited = false;
 let tokenClient;
 
 /**
- * Inicializa Google Calendar API
+ * Callback automático: se ejecuta cuando api.js termina de cargar.
  */
-function initGoogleCalendar() {
-    if (typeof gapi === 'undefined' || typeof google === 'undefined') {
-        console.warn('⚠️ Google APIs no disponibles (scripts no cargados)');
-        return;
-    }
-
-    // Cargar GAPI
+function gapiLoaded() {
     gapi.load('client', async () => {
         await gapi.client.init({
             apiKey: CALENDAR_API_KEY,
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
         });
         gapiInited = true;
-        console.log('✅ Google Calendar API inicializada');
+        console.log('✅ Google Calendar API (GAPI) lista');
     });
+}
 
-    // Cargar GIS (Google Identity Services)
+/**
+ * Callback automático: se ejecuta cuando gsi/client termina de cargar.
+ */
+function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CALENDAR_CLIENT_ID,
         scope: CALENDAR_SCOPES,
-        callback: '', // Se define en cada uso
+        callback: '', // Se asigna en cada uso
     });
     gisInited = true;
+    console.log('✅ Google Identity Services (GIS) listo');
+}
+
+/**
+ * Fallback manual por si los scripts aún no dispararon sus callbacks.
+ */
+function initGoogleCalendar() {
+    if (typeof gapi !== 'undefined' && !gapiInited) gapiLoaded();
+    if (typeof google !== 'undefined' && !gisInited) gisLoaded();
 }
 
 /**
