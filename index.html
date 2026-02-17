@@ -3942,12 +3942,29 @@ setInterval(function() {
                 closeModal();
                 // renderReminders() y updateCalendar() se actualizan automáticamente con el listener
 
-                // Schedule enhanced notification (alarma mejorada)
-                if (time) {
-                    await scheduleEnhancedNotification(reminder);
+                // Sincronizar con Google Calendar si el usuario lo tiene configurado
+                const notificationMethod = document.getElementById('notification-method')?.value || 'web';
+                if ((notificationMethod === 'calendar' || notificationMethod === 'both') && gapiInited && gisInited) {
+                    const calendarEventId = await addToGoogleCalendar(reminder);
+                    if (calendarEventId && currentUser) {
+                        // Guardar el ID del evento de Calendar en Firestore para poder borrarlo después
+                        await db.collection('users').doc(currentUser.uid)
+                            .collection('reminders')
+                            .doc(String(reminder.id))
+                            .update({ calendarEventId });
+                    }
+                    if (calendarEventId) {
+                        alert('✅ Recordatorio guardado y agregado a Google Calendar.\nRecibirás notificaciones aunque el navegador esté cerrado.');
+                    } else {
+                        alert('✅ Recordatorio guardado.\n⚠️ No se pudo sincronizar con Google Calendar. Revisa la configuración.');
+                    }
+                } else {
+                    // Schedule enhanced notification (alarma mejorada, solo funciona con app abierta)
+                    if (time) {
+                        await scheduleEnhancedNotification(reminder);
+                    }
+                    alert('✅ Recordatorio guardado y notificación programada!');
                 }
-
-                alert('✅ Recordatorio guardado y notificación programada!');
             } catch (error) {
                 console.error('Error al guardar recordatorio:', error);
                 alert('❌ Error al guardar recordatorio');
@@ -3959,6 +3976,11 @@ setInterval(function() {
                 const reminder = reminders[idx];
 
                 try {
+                    // Si hay evento en Google Calendar, eliminarlo también
+                    if (reminder.calendarEventId && gapiInited && gisInited) {
+                        await deleteFromGoogleCalendar(reminder.calendarEventId);
+                    }
+
                     if (currentUser && reminder.firestoreId) {
                         await db.collection('users').doc(currentUser.uid)
                             .collection('reminders')
@@ -5646,76 +5668,123 @@ function initGoogleCalendar() {
 }
 
 /**
- * Agrega un recordatorio a Google Calendar
+ * Agrega un recordatorio a Google Calendar.
+ * Retorna el ID del evento creado, o null si falla.
  */
 async function addToGoogleCalendar(reminder) {
-    if (!gapiInited || !gisInited) {
-        console.log('⚠️ Google Calendar no inicializado. Inicializando...');
-        initGoogleCalendar();
+    return new Promise(async (resolve) => {
+        if (!gapiInited || !gisInited) {
+            console.log('⚠️ Google Calendar no inicializado. Inicializando...');
+            initGoogleCalendar();
+            await new Promise(r => setTimeout(r, 1500));
+        }
 
-        // Esperar un momento para que inicialice
-        await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+        tokenClient.callback = async (response) => {
+            if (response.error !== undefined) {
+                console.error('Error de autorización Calendar:', response);
+                resolve(null);
+                return;
+            }
 
-    // Pedir autorización
-    tokenClient.callback = async (response) => {
-        if (response.error !== undefined) {
-            console.error('Error de autorización:', response);
+            try {
+                const reminderDate = parseLocalDate(reminder.date);
+                const [hours, minutes] = (reminder.time || '09:00').split(':').map(Number);
+
+                const startDateTime = new Date(reminderDate);
+                startDateTime.setHours(hours, minutes, 0, 0);
+
+                const endDateTime = new Date(startDateTime);
+                endDateTime.setHours(hours + 1, minutes, 0, 0);
+
+                const categoryEmoji = {
+                    tarea: '📝', examen: '📄', exposicion: '🎤',
+                    evento: '🎉', congreso: '🎓', otro: '📌'
+                }[reminder.type] || '📌';
+
+                const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+                const event = {
+                    summary: `${categoryEmoji} ${reminder.title}`,
+                    description: [
+                        reminder.subject && `Materia: ${reminder.subject}`,
+                        reminder.description
+                    ].filter(Boolean).join('\n\n') + '\n\n— HorarioMat',
+                    start: { dateTime: startDateTime.toISOString(), timeZone },
+                    end: { dateTime: endDateTime.toISOString(), timeZone },
+                    reminders: {
+                        useDefault: false,
+                        overrides: [
+                            { method: 'popup', minutes: 15 },
+                            { method: 'popup', minutes: 0 }
+                        ]
+                    },
+                    colorId: '9'
+                };
+
+                const calResponse = await gapi.client.calendar.events.insert({
+                    calendarId: 'primary',
+                    resource: event
+                });
+
+                const eventId = calResponse.result.id;
+                console.log('✅ Evento creado en Google Calendar:', eventId);
+                resolve(eventId);
+
+            } catch (error) {
+                console.error('Error al crear evento en Calendar:', error);
+                resolve(null);
+            }
+        };
+
+        if (gapi.client.getToken() === null) {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        } else {
+            tokenClient.requestAccessToken({ prompt: '' });
+        }
+    });
+}
+
+/**
+ * Elimina un evento de Google Calendar por su ID.
+ */
+async function deleteFromGoogleCalendar(eventId) {
+    if (!eventId) return false;
+
+    return new Promise(async (resolve) => {
+        if (!gapiInited || !gisInited) {
+            resolve(false);
             return;
         }
 
-        // Crear evento
-        try {
-            const reminderDate = parseLocalDate(reminder.date);
-            const [hours, minutes] = reminder.time.split(':').map(Number);
+        const doDelete = async () => {
+            try {
+                await gapi.client.calendar.events.delete({
+                    calendarId: 'primary',
+                    eventId: eventId
+                });
+                console.log('✅ Evento eliminado de Google Calendar');
+                resolve(true);
+            } catch (error) {
+                // Si el evento ya no existe (404), no es un error real
+                if (error.status === 404 || error.status === 410) {
+                    resolve(true);
+                } else {
+                    console.error('Error al eliminar evento de Calendar:', error);
+                    resolve(false);
+                }
+            }
+        };
 
-            const startDateTime = new Date(reminderDate);
-            startDateTime.setHours(hours, minutes, 0, 0);
-
-            const endDateTime = new Date(startDateTime);
-            endDateTime.setHours(hours + 1, minutes, 0, 0); // 1 hora de duración por defecto
-
-            const event = {
-                summary: reminder.title,
-                description: `${reminder.subject || ''}\n\n${reminder.description || ''}`.trim(),
-                start: {
-                    dateTime: startDateTime.toISOString(),
-                    timeZone: 'America/La_Paz' // Bolivia timezone
-                },
-                end: {
-                    dateTime: endDateTime.toISOString(),
-                    timeZone: 'America/La_Paz'
-                },
-                reminders: {
-                    useDefault: false,
-                    overrides: [
-                        { method: 'popup', minutes: 15 },
-                        { method: 'popup', minutes: 0 }
-                    ]
-                },
-                colorId: '9' // Color azul para recordatorios
+        if (gapi.client.getToken() === null) {
+            tokenClient.callback = async (response) => {
+                if (response.error) { resolve(false); return; }
+                await doDelete();
             };
-
-            const request = await gapi.client.calendar.events.insert({
-                calendarId: 'primary',
-                resource: event
-            });
-
-            console.log('✅ Evento creado en Google Calendar:', request.result.htmlLink);
-            alert('✅ Recordatorio agregado a tu Google Calendar!\n\nRecibirás notificaciones de tu calendario.');
-
-        } catch (error) {
-            console.error('Error al crear evento en Calendar:', error);
-            alert('❌ No se pudo agregar al calendario. Inténtalo de nuevo.');
+            tokenClient.requestAccessToken({ prompt: '' });
+        } else {
+            await doDelete();
         }
-    };
-
-    // Solicitar token
-    if (gapi.client.getToken() === null) {
-        tokenClient.requestAccessToken({ prompt: 'consent' });
-    } else {
-        tokenClient.requestAccessToken({ prompt: '' });
-    }
+    });
 }
 
 // Iniciar cuando carga la página
