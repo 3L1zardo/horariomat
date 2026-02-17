@@ -811,13 +811,13 @@
 </head>
 <body>
     <!-- Login Screen -->
-    <div id="auth-screen" style="display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, var(--primary), #008855); z-index: 9999; align-items: center; justify-content: center;">
+    <div id="auth-screen" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, var(--primary), #008855); z-index: 9999; display: flex; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 20px; padding: 40px 30px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <div style="text-align: center; margin-bottom: 30px;">
                 <div style="font-size: 60px; margin-bottom: 10px;">📅</div>
                 <h2 style="font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 5px;">Horario ESFM</h2>
                 <p style="color: #666; font-size: 14px;">Simón Bolívar</p>
-                        </div>
+            </div>
 
             <!-- Login/Register Tabs -->
             <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
@@ -887,6 +887,12 @@
     </div>
 
     <!-- Main App (hidden until authenticated) -->
+    <div id="main-app" style="display: none;">
+    <!-- Header -->
+    <div class="header">
+        <h1>E.S.F.M. "SIMÓN BOLÍVAR"</h1>
+        <div class="subtitle">1RO MATEMÁTICA</div>
+    </div>
 
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
@@ -4873,9 +4879,8 @@ async function initFirebasePush() {
 // Recibir mensajes cuando la app está ABIERTA
 messaging.onMessage((payload) => {
     console.log('📩 Mensaje recibido:', payload);
-    if (!payload.notification) return;
     const { title, body } = payload.notification;
-    new Notification(title, {
+    new Notification(title, { 
         body: body,
         icon: 'icon-192.png'
     });
