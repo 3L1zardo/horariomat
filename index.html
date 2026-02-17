@@ -2617,13 +2617,23 @@ setInterval(() => {
             try {
                 if (currentUser && (reminder.firestoreId || reminder.id)) {
                     const docId = reminder.firestoreId || String(reminder.id);
+
+                    const updateData = {
+                        completed: newStatus,
+                        completedAt: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null
+                    };
+
+                    // Si se marca como completado y hay evento en Google Calendar → eliminarlo
+                    // (el recordatorio ya cumplió su función, no tiene sentido que siga en el calendario)
+                    if (newStatus && reminder.calendarEventId && gapiInited && gisInited) {
+                        await deleteFromGoogleCalendar(reminder.calendarEventId);
+                        updateData.calendarEventId = firebase.firestore.FieldValue.delete();
+                    }
+
                     await db.collection('users').doc(currentUser.uid)
                         .collection('reminders')
                         .doc(docId)
-                        .update({
-                            completed: newStatus,
-                            completedAt: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null
-                        });
+                        .update(updateData);
                 } else {
                     // Fallback a localStorage
                     reminders[idx].completed = newStatus;
