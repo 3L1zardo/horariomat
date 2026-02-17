@@ -2623,11 +2623,9 @@ setInterval(() => {
                         completedAt: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null
                     };
 
-                    // Si se marca como completado y hay evento en Google Calendar → eliminarlo
-                    // (el recordatorio ya cumplió su función, no tiene sentido que siga en el calendario)
-                    if (newStatus && reminder.calendarEventId && gapiInited && gisInited) {
-                        await deleteFromGoogleCalendar(reminder.calendarEventId);
-                        updateData.calendarEventId = firebase.firestore.FieldValue.delete();
+                    // Si hay evento en Google Calendar → marcarlo como completado/pendiente
+                    if (reminder.calendarEventId && gapiInited && gisInited) {
+                        await markGoogleCalendarEventCompleted(reminder.calendarEventId, reminder, newStatus);
                     }
 
                     await db.collection('users').doc(currentUser.uid)
@@ -4886,8 +4884,8 @@ let userDataUnsubscribers = [];
 const VAPID_KEY = 'BBHwc5Mppt2z98YM4uazXcDnI6luBVutOdbmcBdIg9fqGxR9avIEDeONgnq9U33vK5wbE3LpJ1LFXtAhov9qMfY';
 
 // Google Calendar API Config
-const CALENDAR_CLIENT_ID = '1046696947499-YOUR_OAUTH_CLIENT.apps.googleusercontent.com'; // Necesitarás configurar esto
-const CALENDAR_API_KEY = 'YOUR_API_KEY'; // Necesitarás configurar esto
+const CALENDAR_CLIENT_ID = '1046696947499-jsdv5lobhj5vc9af7vv02b6qsh3n83sv.apps.googleusercontent.com';
+const CALENDAR_API_KEY = 'AIzaSyBDKybOzpS2oQWziONmgzeSks8sDdGBe1k';
 const CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
 // Solicitar permiso y obtener token FCM, guardarlo en Firestore para push en background
@@ -5793,6 +5791,70 @@ async function deleteFromGoogleCalendar(eventId) {
             tokenClient.requestAccessToken({ prompt: '' });
         } else {
             await doDelete();
+        }
+    });
+}
+
+/**
+ * Marca un evento de Google Calendar como completado (✅ en título, color gris)
+ * o lo restaura a su estado original si se desmarca.
+ */
+async function markGoogleCalendarEventCompleted(eventId, reminder, completed) {
+    if (!eventId) return false;
+
+    return new Promise(async (resolve) => {
+        if (!gapiInited || !gisInited) {
+            resolve(false);
+            return;
+        }
+
+        const doUpdate = async () => {
+            try {
+                let patchData;
+                if (completed) {
+                    // Marcar como completado: título con ✅ y color gris (graphite)
+                    patchData = {
+                        summary: `✅ ${reminder.title}`,
+                        colorId: '8' // graphite/gris
+                    };
+                    console.log('✅ Evento marcado como completado en Google Calendar');
+                } else {
+                    // Restaurar: título original con emoji de categoría y color original
+                    const categoryEmoji = {
+                        tarea: '📝', examen: '📄', exposicion: '🎤',
+                        evento: '🎉', congreso: '🎓', otro: '📌'
+                    }[reminder.type] || '📌';
+                    patchData = {
+                        summary: `${categoryEmoji} ${reminder.title}`,
+                        colorId: '9'
+                    };
+                    console.log('↩️ Evento restaurado como pendiente en Google Calendar');
+                }
+
+                await gapi.client.calendar.events.patch({
+                    calendarId: 'primary',
+                    eventId: eventId,
+                    resource: patchData
+                });
+                resolve(true);
+            } catch (error) {
+                if (error.status === 404 || error.status === 410) {
+                    resolve(true); // El evento ya no existe, no es un error real
+                } else {
+                    console.error('Error al actualizar estado del evento en Calendar:', error);
+                    resolve(false);
+                }
+            }
+        };
+
+        if (gapi.client.getToken() === null) {
+            tokenClient.callback = async (response) => {
+                if (response.error) { resolve(false); return; }
+                await doUpdate();
+            };
+            tokenClient.requestAccessToken({ prompt: '' });
+        } else {
+            await doUpdate();
         }
     });
 }
