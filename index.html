@@ -5069,7 +5069,7 @@ async function registerWithEmail() {
         console.log('✅ Usuario registrado:', email);
         // El onAuthStateChanged se encargará del resto
     } catch (error) {
-        console.error('Error registro:', error);
+        console.error('Error registro:', error.code, error.message);
         let message = 'Error al crear la cuenta';
 
         if (error.code === 'auth/email-already-in-use') {
@@ -5078,6 +5078,10 @@ async function registerWithEmail() {
             message = 'Correo electrónico inválido';
         } else if (error.code === 'auth/weak-password') {
             message = 'La contraseña es muy débil';
+        } else if (error.code === 'permission-denied' || error.code === 'firestore/permission-denied') {
+            message = 'Error de permisos en base de datos. Contacta al administrador.';
+        } else if (error.code) {
+            message = 'Error al crear la cuenta (' + error.code + ')';
         }
 
         showAuthError(message);
