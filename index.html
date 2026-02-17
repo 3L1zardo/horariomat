@@ -4833,6 +4833,10 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const messaging = firebase.messaging();
 
+console.log('🔥 Firebase inicializado correctamente');
+console.log('📧 Auth disponible:', !!auth);
+console.log('💾 Firestore disponible:', !!db);
+
 // Habilitar persistencia offline de Firestore
 db.enablePersistence({ synchronizeTabs: true })
     .catch((err) => {
@@ -4990,8 +4994,12 @@ function switchAuthTab(tab) {
 
 // Login con email/password
 async function loginWithEmail() {
+    console.log('🔐 Intentando login...');
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
+
+    console.log('📧 Email:', email);
+    console.log('🔑 Password length:', password.length);
 
     if (!email || !password) {
         showAuthError('Por favor completa todos los campos');
@@ -5002,11 +5010,16 @@ async function loginWithEmail() {
     hideAuthError();
 
     try {
-        await auth.signInWithEmailAndPassword(email, password);
+        console.log('⏳ Llamando a signInWithEmailAndPassword...');
+        const result = await auth.signInWithEmailAndPassword(email, password);
+        console.log('✅ Login exitoso!', result.user.email);
         // El onAuthStateChanged se encargará del resto
     } catch (error) {
-        console.error('Error login:', error);
-        let message = 'Error al iniciar sesión';
+        console.error('❌ Error login completo:', error);
+        console.error('❌ Código de error:', error.code);
+        console.error('❌ Mensaje:', error.message);
+
+        let message = 'Error al iniciar sesión: ' + (error.message || error.code);
 
         if (error.code === 'auth/user-not-found') {
             message = 'No existe una cuenta con este correo';
@@ -5026,10 +5039,15 @@ async function loginWithEmail() {
 
 // Registro con email/password
 async function registerWithEmail() {
+    console.log('📝 Intentando registro...');
     const name = document.getElementById('register-name').value.trim();
     const email = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
     const passwordConfirm = document.getElementById('register-password-confirm').value;
+
+    console.log('👤 Nombre:', name);
+    console.log('📧 Email:', email);
+    console.log('🔑 Password length:', password.length);
 
     if (!name || !email || !password || !passwordConfirm) {
         showAuthError('Por favor completa todos los campos');
@@ -5050,14 +5068,19 @@ async function registerWithEmail() {
     hideAuthError();
 
     try {
+        console.log('⏳ Llamando a createUserWithEmailAndPassword...');
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        console.log('✅ Usuario creado en Auth:', userCredential.user.uid);
 
         // Actualizar perfil con nombre
+        console.log('⏳ Actualizando perfil con nombre...');
         await userCredential.user.updateProfile({
             displayName: name
         });
+        console.log('✅ Perfil actualizado');
 
         // Crear documento de perfil en Firestore
+        console.log('⏳ Guardando datos en Firestore...');
         await db.collection('users').doc(userCredential.user.uid).set({
             name: name,
             email: email,
@@ -5065,12 +5088,16 @@ async function registerWithEmail() {
             notificationMethod: 'web', // Default: Web notifications
             theme: 'light'
         });
+        console.log('✅ Datos guardados en Firestore');
 
-        console.log('✅ Usuario registrado:', email);
+        console.log('✅ Usuario registrado completamente:', email);
         // El onAuthStateChanged se encargará del resto
     } catch (error) {
-        console.error('Error registro:', error);
-        let message = 'Error al crear la cuenta';
+        console.error('❌ Error registro completo:', error);
+        console.error('❌ Código de error:', error.code);
+        console.error('❌ Mensaje:', error.message);
+
+        let message = 'Error al crear la cuenta: ' + (error.message || error.code);
 
         if (error.code === 'auth/email-already-in-use') {
             message = 'Ya existe una cuenta con este correo';
