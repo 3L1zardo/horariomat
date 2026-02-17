@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Función helper para verificar autenticación
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Función helper para verificar que el usuario es el dueño
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Reglas para colección de usuarios
+    match /users/{userId} {
+      // Permitir que un usuario cree su propio documento al registrarse
+      allow create: if request.auth.uid == userId;
+      // El usuario puede leer y escribir solo sus propios datos
+      allow read, write: if isSignedIn() && isOwner(userId);
+
+      // Subcolecciones del usuario
+      match /reminders/{reminderId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+      }
+
+      match /attendance/{attendanceId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+      }
+
+      match /settings/{settingId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+      }
+    }
+
+    // Denegar acceso a cualquier otra colección por defecto
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
