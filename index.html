@@ -3946,11 +3946,17 @@ setInterval(function() {
                     reminders.push(reminder);
                     localStorage.setItem('reminders', JSON.stringify(reminders));
                 }
+            } catch (error) {
+                console.error('Error al guardar recordatorio en Firestore:', error);
+                alert('❌ Error al guardar recordatorio');
+                return;
+            }
 
-                closeModal();
-                // renderReminders() y updateCalendar() se actualizan automáticamente con el listener
+            closeModal();
+            // renderReminders() y updateCalendar() se actualizan automáticamente con el listener
 
-                // Sincronizar con Google Calendar si el usuario lo tiene configurado
+            // Sincronizar con Google Calendar / notificaciones (errores aquí no afectan el guardado)
+            try {
                 const notificationMethod = document.getElementById('notification-method')?.value || 'web';
                 if ((notificationMethod === 'calendar' || notificationMethod === 'both') && gapiInited && gisInited) {
                     const calendarEventId = await addToGoogleCalendar(reminder);
@@ -3971,11 +3977,11 @@ setInterval(function() {
                     if (time) {
                         await scheduleEnhancedNotification(reminder);
                     }
-                    alert('✅ Recordatorio guardado y notificación programada!');
+                    alert('✅ Recordatorio guardado!');
                 }
-            } catch (error) {
-                console.error('Error al guardar recordatorio:', error);
-                alert('❌ Error al guardar recordatorio');
+            } catch (notifError) {
+                console.warn('⚠️ Recordatorio guardado, pero falló la notificación:', notifError);
+                alert('✅ Recordatorio guardado.\n⚠️ No se pudo programar la notificación push.');
             }
         }
 
