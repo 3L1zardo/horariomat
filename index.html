@@ -3922,19 +3922,20 @@ setInterval(function() {
                 return;
             }
 
-            const reminder = {
-                id: Date.now(),
-                type,
-                subject,
-                title,
-                description,
-                date,
-                time,
-                completed: false,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-
+            let reminder;
             try {
+                reminder = {
+                    id: Date.now(),
+                    type,
+                    subject,
+                    title,
+                    description,
+                    date,
+                    time,
+                    completed: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
                 // Guardar en Firestore
                 if (currentUser) {
                     await db.collection('users').doc(currentUser.uid)
@@ -3942,13 +3943,12 @@ setInterval(function() {
                         .doc(String(reminder.id))
                         .set(reminder);
                 } else {
-                    // Fallback a localStorage si no está autenticado (no debería pasar)
-                    reminders.push(reminder);
-                    localStorage.setItem('reminders', JSON.stringify(reminders));
+                    alert('❌ No hay sesión activa. Inicia sesión para guardar recordatorios.');
+                    return;
                 }
             } catch (error) {
                 console.error('Error al guardar recordatorio en Firestore:', error);
-                alert('❌ Error al guardar recordatorio');
+                alert('❌ Error al guardar recordatorio. Verifica tu conexión e intenta de nuevo.');
                 return;
             }
 
