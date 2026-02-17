@@ -1655,6 +1655,9 @@
         let editingDay = null;
         let reminderFilter = 'all';
 
+        // Control de timeouts de notificaciones programadas (evita duplicados)
+        const scheduledNotificationTimeouts = new Map();
+
         // Load custom schedule from localStorage or use default
         let customSchedule = JSON.parse(localStorage.getItem('customSchedule') || 'null');
 
@@ -5312,6 +5315,19 @@ function setupRealtimeListeners(userId) {
                 updateCalendar();
             }
 
+            // Reprogramar notificaciones para todos los recordatorios futuros no completados
+            const now = new Date();
+            reminders.forEach(reminder => {
+                if (!reminder.completed && reminder.date && reminder.time) {
+                    const reminderDate = parseLocalDate(reminder.date);
+                    const [h, m] = reminder.time.split(':').map(Number);
+                    reminderDate.setHours(h, m, 0, 0);
+                    if (reminderDate > now) {
+                        scheduleWebNotification(reminder);
+                    }
+                }
+            });
+
             console.log(`🔄 Recordatorios sincronizados: ${reminders.length}`);
         }, (error) => {
             console.error('Error listener recordatorios:', error);
@@ -5498,18 +5514,33 @@ function scheduleWebNotification(reminder) {
     const now = new Date();
     const timeUntilReminder = reminderDate - now;
 
+    // Cancelar timeouts previos de este recordatorio para evitar duplicados
+    if (scheduledNotificationTimeouts.has(reminder.id)) {
+        clearTimeout(scheduledNotificationTimeouts.get(reminder.id));
+        scheduledNotificationTimeouts.delete(reminder.id);
+    }
+    const beforeKey = `${reminder.id}_before`;
+    if (scheduledNotificationTimeouts.has(beforeKey)) {
+        clearTimeout(scheduledNotificationTimeouts.get(beforeKey));
+        scheduledNotificationTimeouts.delete(beforeKey);
+    }
+
     if (timeUntilReminder > 0) {
-        // Programar notificación
-        setTimeout(() => {
+        // Programar notificación exacta
+        const timeoutId = setTimeout(() => {
             showAlarmNotification(reminder);
+            scheduledNotificationTimeouts.delete(reminder.id);
         }, timeUntilReminder);
+        scheduledNotificationTimeouts.set(reminder.id, timeoutId);
 
         // También programar recordatorio 15 minutos antes
         const reminderBefore = timeUntilReminder - (15 * 60 * 1000);
         if (reminderBefore > 0) {
-            setTimeout(() => {
+            const beforeId = setTimeout(() => {
                 showAlarmNotification(reminder, true);
+                scheduledNotificationTimeouts.delete(beforeKey);
             }, reminderBefore);
+            scheduledNotificationTimeouts.set(beforeKey, beforeId);
         }
 
         console.log(`⏰ Notificación programada para ${reminder.date} ${reminder.time}`);
