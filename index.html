@@ -5563,24 +5563,8 @@ async function scheduleEnhancedNotification(reminder) {
         return;
     }
 
-    // Obtener método de notificaciones del usuario
-    let notificationMethod = 'web'; // Default
-    if (currentUser) {
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        if (userDoc.exists) {
-            notificationMethod = userDoc.data().notificationMethod || 'web';
-        }
-    }
-
-    // Google Calendar
-    if (notificationMethod === 'calendar' || notificationMethod === 'both') {
-        await addToGoogleCalendar(reminder);
-    }
-
-    // Web Notifications
-    if (notificationMethod === 'web' || notificationMethod === 'both') {
-        scheduleWebNotification(reminder);
-    }
+    // Solo notificaciones web — Google Calendar se maneja en saveReminder
+    scheduleWebNotification(reminder);
 }
 
 /**
@@ -5693,6 +5677,11 @@ let tokenClient;
  * Inicializa Google Calendar API
  */
 function initGoogleCalendar() {
+    if (typeof gapi === 'undefined' || typeof google === 'undefined') {
+        console.warn('⚠️ Google APIs no disponibles (scripts no cargados)');
+        return;
+    }
+
     // Cargar GAPI
     gapi.load('client', async () => {
         await gapi.client.init({
