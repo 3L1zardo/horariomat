@@ -4833,6 +4833,11 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const messaging = firebase.messaging();
 
+console.log('🔥 Firebase inicializado correctamente');
+console.log('📧 Auth disponible:', !!auth);
+console.log('💾 Firestore disponible:', !!db);
+
+
 // Habilitar persistencia offline de Firestore
 db.enablePersistence({ synchronizeTabs: true })
     .catch((err) => {
