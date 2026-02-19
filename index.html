@@ -36,6 +36,48 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Google APIs para integración con Google Calendar -->
+    <!-- Estas constantes y stubs deben definirse ANTES de que los scripts async carguen -->
+    <script>
+        var CALENDAR_CLIENT_ID = '1046696947499-jsdv5lobhj5vc9af7vv02b6qsh3n83sv.apps.googleusercontent.com';
+        var CALENDAR_API_KEY = 'AIzaSyBDKybOzpS2oQWziONmgzeSks8sDdGBe1k';
+        var CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+        var gapiInited = false;
+        var gisInited = false;
+        var tokenClient;
+
+        function gapiLoaded() {
+            gapi.load('client', function() {
+                gapi.client.init({
+                    apiKey: CALENDAR_API_KEY,
+                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+                }).then(function() {
+                    gapiInited = true;
+                    console.log('✅ Google Calendar API (GAPI) lista');
+                }).catch(function(err) {
+                    console.warn('⚠️ Error al inicializar GAPI:', err);
+                });
+            });
+        }
+
+        function gisLoaded() {
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CALENDAR_CLIENT_ID,
+                    scope: CALENDAR_SCOPES,
+                    callback: '',
+                });
+                gisInited = true;
+                console.log('✅ Google Identity Services (GIS) listo');
+            } catch(err) {
+                console.warn('⚠️ Error al inicializar GIS:', err);
+            }
+        }
+
+        function initGoogleCalendar() {
+            if (typeof gapi !== 'undefined' && !gapiInited) gapiLoaded();
+            if (typeof google !== 'undefined' && !gisInited) gisLoaded();
+        }
+    </script>
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     
@@ -2815,11 +2857,6 @@ setInterval(() => {
             clearForm();
         }
 
-        function closeModal() {
-            document.getElementById('reminder-modal').classList.remove('active');
-            clearForm();
-        }
-
         function openClassModal(day, idx) {
             const schedule = customSchedule || scheduleData;
             const cls = schedule[day][idx];
@@ -3976,8 +4013,14 @@ setInterval(function() {
                 return;
             }
 
+            // Actualizar array local inmediatamente (UI responsiva sin esperar onSnapshot)
+            const localReminder = { ...reminder, firestoreId: String(reminder.id) };
+            delete localReminder.createdAt; // evitar el serverTimestamp sentinel no serializable
+            reminders.unshift(localReminder);
             closeModal();
-            // renderReminders() y updateCalendar() se actualizan automáticamente con el listener
+            if (currentView === 'recordatorios') renderReminders();
+            if (currentView === 'calendario') updateCalendar();
+            // onSnapshot reconciliará el array con los datos reales de Firestore
 
             // Sincronizar con Google Calendar / notificaciones (errores aquí no afectan el guardado)
             try {
@@ -4924,10 +4967,7 @@ let userDataUnsubscribers = [];
 // Clave VAPID
 const VAPID_KEY = 'BBHwc5Mppt2z98YM4uazXcDnI6luBVutOdbmcBdIg9fqGxR9avIEDeONgnq9U33vK5wbE3LpJ1LFXtAhov9qMfY';
 
-// Google Calendar API Config
-const CALENDAR_CLIENT_ID = '1046696947499-jsdv5lobhj5vc9af7vv02b6qsh3n83sv.apps.googleusercontent.com';
-const CALENDAR_API_KEY = 'AIzaSyBDKybOzpS2oQWziONmgzeSks8sDdGBe1k';
-const CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+// Google Calendar API Config (constantes definidas en <head> para evitar conflicto de timing)
 
 // Solicitar permiso y obtener token FCM, guardarlo en Firestore para push en background
 async function initFirebasePush() {
@@ -5699,45 +5739,8 @@ async function showAlarmNotification(reminder, isBefore = false) {
 // ==============================================
 // INTEGRACIÓN CON GOOGLE CALENDAR
 // ==============================================
-
-let gapiInited = false;
-let gisInited = false;
-let tokenClient;
-
-/**
- * Callback automático: se ejecuta cuando api.js termina de cargar.
- */
-function gapiLoaded() {
-    gapi.load('client', async () => {
-        await gapi.client.init({
-            apiKey: CALENDAR_API_KEY,
-            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
-        });
-        gapiInited = true;
-        console.log('✅ Google Calendar API (GAPI) lista');
-    });
-}
-
-/**
- * Callback automático: se ejecuta cuando gsi/client termina de cargar.
- */
-function gisLoaded() {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CALENDAR_CLIENT_ID,
-        scope: CALENDAR_SCOPES,
-        callback: '', // Se asigna en cada uso
-    });
-    gisInited = true;
-    console.log('✅ Google Identity Services (GIS) listo');
-}
-
-/**
- * Fallback manual por si los scripts aún no dispararon sus callbacks.
- */
-function initGoogleCalendar() {
-    if (typeof gapi !== 'undefined' && !gapiInited) gapiLoaded();
-    if (typeof google !== 'undefined' && !gisInited) gisLoaded();
-}
+// gapiInited, gisInited, tokenClient, gapiLoaded(), gisLoaded(), initGoogleCalendar()
+// están definidos en <head> para evitar problemas de timing con scripts async.
 
 /**
  * Agrega un recordatorio a Google Calendar.
