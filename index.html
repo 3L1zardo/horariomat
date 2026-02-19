@@ -5058,6 +5058,10 @@ auth.onAuthStateChanged(async (user) => {
         userDataUnsubscribers.forEach(unsub => unsub());
         userDataUnsubscribers = [];
 
+        // Resetear subtitle al valor original
+        const subtitleLogout = document.querySelector('.header .subtitle');
+        if (subtitleLogout) subtitleLogout.textContent = '1RO MATEMÁTICA';
+
         // Mostrar pantalla de login
         const authScreenLogout = document.getElementById('auth-screen');
         const mainAppLogout = document.getElementById('main-app');
@@ -5249,8 +5253,14 @@ async function loginWithGoogle() {
     } catch (error) {
         console.error('Error Google login:', error);
 
-        if (error.code !== 'auth/popup-closed-by-user') {
-            showAuthError('Error al iniciar sesión con Google');
+        if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+            // El usuario cerró el popup, no mostrar error
+        } else if (error.code === 'auth/unauthorized-domain') {
+            showAuthError('⚠️ Dominio no autorizado. Pide al administrador que agregue este dominio en Firebase Console → Authentication → Authorized domains.');
+        } else if (error.message && error.message.includes('redirect_uri_mismatch')) {
+            showAuthError('⚠️ Error de configuración OAuth. Agrega el dominio de la app en Google Cloud Console → Credenciales → Orígenes JavaScript autorizados.');
+        } else {
+            showAuthError('Error al iniciar sesión con Google: ' + (error.message || error.code || 'error desconocido'));
         }
     } finally {
         showAuthLoading(false);
