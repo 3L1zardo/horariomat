@@ -3578,29 +3578,10 @@ setInterval(() => {
             return false;
         }
 
-        // Schedule notification for a reminder
+        // scheduleNotification: alias legacy → usa scheduleWebNotification (definida en el segundo bloque de script)
 function scheduleNotification(reminder) {
-    if (!reminder.date || !reminder.time) return;
-    // Guardar en localStorage para checkeo periódico
-    const scheduled = JSON.parse(localStorage.getItem('scheduledNotifications') || '[]');
-    if (!scheduled.find(s => s.id === reminder.id)) {
-        scheduled.push({
-            id: reminder.id,
-            datetime: `${reminder.date}T${reminder.time}`,
-            notified: false
-        });
-        localStorage.setItem('scheduledNotifications', JSON.stringify(scheduled));
-    }
-    
-    const reminderDateTime = new Date(`${reminder.date}T${reminder.time}`);
-    const now = new Date();
-    const timeUntilReminder = reminderDateTime - now;
-    
-    // Schedule para tiempos cortos (menos de 24 horas)
-    if (timeUntilReminder > 0 && timeUntilReminder < 86400000) {
-        setTimeout(() => {
-            showNotification(reminder);
-        }, timeUntilReminder);
+    if (typeof scheduleWebNotification === 'function') {
+        scheduleWebNotification(reminder);
     }
 }
         // Show notification
@@ -4892,19 +4873,11 @@ async function showNotification(reminder, customTitle = null) {
         new Notification(title, { body });
     }
 }
-// Programar notificaciones
+// scheduleNotification: alias legacy — la implementación real es scheduleWebNotification
+// (definida más abajo en el segundo bloque de script con soporte de Map para deduplicación)
 function scheduleNotification(reminder) {
-    if (!reminder.date || !reminder.time) return;
-
-    const [year, month, day] = reminder.date.split('-').map(Number);
-    const [hours, minutes] = reminder.time.split(':').map(Number);
-    const reminderDateTime = new Date(year, month - 1, day, hours, minutes);
-    const now = new Date();
-    const timeUntilReminder = reminderDateTime - now;
-
-    // Solo para la página abierta
-    if (timeUntilReminder > 0 && timeUntilReminder < 86400000) {
-        setTimeout(() => showNotification(reminder), timeUntilReminder);
+    if (typeof scheduleWebNotification === 'function') {
+        scheduleWebNotification(reminder);
     }
 }
 
