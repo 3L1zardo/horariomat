@@ -5020,6 +5020,55 @@ function formatLocalDate(date) {
 // SISTEMA DE AUTENTICACIÓN
 // ==============================================
 
+// Manejar resultado de signInWithRedirect (para PWAs en modo standalone)
+async function handleRedirectResult() {
+    try {
+        const result = await auth.getRedirectResult();
+
+        // Verificar si hay un redirect pendiente
+        const isPendingCalendarReconnect = localStorage.getItem('pendingCalendarReconnect');
+
+        if (result && result.credential && result.credential.accessToken) {
+            console.log('✅ Redirect completado exitosamente');
+
+            // Si era una reconexión de Google Calendar
+            if (isPendingCalendarReconnect === 'true') {
+                googleCalendarToken = result.credential.accessToken;
+                if (gapiInited) {
+                    gapi.client.setToken({ access_token: googleCalendarToken });
+                }
+
+                // Mostrar mensaje de éxito
+                const status = document.getElementById('calendar-connect-status');
+                if (status) {
+                    status.style.display = 'block';
+                    status.textContent = '✅ Google Calendar conectado correctamente';
+                    status.style.color = '#4CAF50';
+                }
+
+                console.log('✅ Google Calendar reconectado exitosamente vía redirect');
+                localStorage.removeItem('pendingCalendarReconnect');
+            }
+        } else if (isPendingCalendarReconnect === 'true') {
+            // Si esperábamos un resultado pero no llegó, limpiar flag
+            localStorage.removeItem('pendingCalendarReconnect');
+        }
+    } catch (error) {
+        console.error('Error al procesar redirect result:', error);
+        localStorage.removeItem('pendingCalendarReconnect');
+
+        const status = document.getElementById('calendar-connect-status');
+        if (status && localStorage.getItem('pendingCalendarReconnect') === 'true') {
+            status.style.display = 'block';
+            status.textContent = '❌ Error al conectar. Intenta nuevamente.';
+            status.style.color = '#f44336';
+        }
+    }
+}
+
+// Llamar al cargar la app para procesar redirects pendientes
+handleRedirectResult();
+
 // Observer de autenticación
 auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -5597,7 +5646,7 @@ async function saveNotificationMethod() {
 
 /**
  * Reconecta Google Calendar para usuarios ya autenticados.
- * Abre el popup de Google para obtener un nuevo access token con scope de Calendar.
+ * Usa popup en navegador y redirect en PWA instalada para compatibilidad con modo standalone.
  */
 async function reconnectGoogleCalendar() {
     const btn = document.getElementById('btn-reconnect-calendar');
@@ -5612,17 +5661,32 @@ async function reconnectGoogleCalendar() {
         // No pedir seleccionar cuenta, usar la sesión actual
         provider.setCustomParameters({ prompt: 'none' });
 
-        const result = await auth.signInWithPopup(provider);
+        // Detectar si la app está en modo standalone (PWA instalada)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                          || window.navigator.standalone
+                          || document.referrer.includes('android-app://');
 
-        if (result.credential && result.credential.accessToken) {
-            googleCalendarToken = result.credential.accessToken;
-            if (gapiInited) {
-                gapi.client.setToken({ access_token: googleCalendarToken });
-            }
-            console.log('✅ Google Calendar reconectado exitosamente');
-            if (status) { status.textContent = '✅ Google Calendar conectado correctamente'; status.style.color = '#4CAF50'; }
+        if (isStandalone) {
+            // En PWA instalada, usar redirect (los popups no funcionan bien)
+            console.log('🔄 Usando signInWithRedirect (modo standalone)');
+            localStorage.setItem('pendingCalendarReconnect', 'true');
+            await auth.signInWithRedirect(provider);
+            // El resultado se manejará en handleRedirectResult() al volver
         } else {
-            throw new Error('No se obtuvo token de acceso');
+            // En navegador normal, usar popup (más rápido)
+            console.log('🪟 Usando signInWithPopup (modo navegador)');
+            const result = await auth.signInWithPopup(provider);
+
+            if (result.credential && result.credential.accessToken) {
+                googleCalendarToken = result.credential.accessToken;
+                if (gapiInited) {
+                    gapi.client.setToken({ access_token: googleCalendarToken });
+                }
+                console.log('✅ Google Calendar reconectado exitosamente');
+                if (status) { status.textContent = '✅ Google Calendar conectado correctamente'; status.style.color = '#4CAF50'; }
+            } else {
+                throw new Error('No se obtuvo token de acceso');
+            }
         }
     } catch (error) {
         console.error('Error al reconectar Google Calendar:', error);
