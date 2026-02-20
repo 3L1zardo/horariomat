@@ -5362,7 +5362,13 @@ async function loginWithGoogle() {
         } else if (error.code === 'auth/unauthorized-domain') {
             showAuthError('⚠️ Dominio no autorizado. Pide al administrador que agregue este dominio en Firebase Console → Authentication → Authorized domains.');
         } else if (error.message && error.message.includes('redirect_uri_mismatch')) {
-            showAuthError('⚠️ Error de configuración OAuth. Agrega el dominio de la app en Google Cloud Console → Credenciales → Orígenes JavaScript autorizados.');
+            const currentOrigin = window.location.origin;
+            showAuthError(`⚠️ Error de configuración OAuth.\n\n` +
+                `1. Ve a: https://console.cloud.google.com/apis/credentials\n` +
+                `2. Edita tu OAuth Client ID\n` +
+                `3. En "Authorized JavaScript origins" agrega:\n   ${currentOrigin}\n` +
+                `4. En "Authorized redirect URIs" agrega:\n   ${currentOrigin}/__/auth/handler\n` +
+                `5. Guarda y espera 2 minutos`);
         } else {
             showAuthError('Error al iniciar sesión con Google: ' + (error.message || error.code || 'error desconocido'));
         }
