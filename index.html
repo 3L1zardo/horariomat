@@ -5704,16 +5704,18 @@ async function reconnectGoogleCalendar() {
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches
                           || window.navigator.standalone
                           || document.referrer.includes('android-app://');
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-        // Usar redirect en móviles (los popups no funcionan bien en móviles)
-        if (isMobile || isStandalone) {
+        // Usar popup en localhost/desarrollo (más fácil de configurar)
+        // Usar redirect en móviles en producción (los popups no funcionan bien en móviles)
+        if ((isMobile || isStandalone) && !isLocalhost) {
             console.log('📱 Usando signInWithRedirect (dispositivo móvil o PWA)');
             localStorage.setItem('pendingCalendarReconnect', 'true');
             await auth.signInWithRedirect(provider);
             // El resultado se manejará en handleRedirectResult() al volver
         } else {
-            // En navegador de escritorio, usar popup (más rápido)
-            console.log('🖥️ Usando signInWithPopup (navegador de escritorio)');
+            // En navegador de escritorio O desarrollo local, usar popup (más rápido)
+            console.log('🖥️ Usando signInWithPopup (navegador de escritorio o desarrollo)');
             const result = await auth.signInWithPopup(provider);
 
             if (result.credential && result.credential.accessToken) {
