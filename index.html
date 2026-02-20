@@ -2165,6 +2165,9 @@ setInterval(() => {
                     } else if (currentView === 'asistencia') {
                         renderAttendance();
                         populateAttendanceSubjectFilter();
+                    } else if (currentView === 'configuracion') {
+                        updateNotificationStatus();
+                        updateCalendarConnectionStatus();
                     }
                 });
             });
@@ -3742,13 +3745,13 @@ setInterval(function() {
         function updateNotificationStatus() {
             const statusDiv = document.getElementById('notification-status');
             if (!statusDiv) return;
-            
+
             if (!('Notification' in window)) {
                 statusDiv.innerHTML = '❌ Tu navegador no soporta notificaciones';
                 statusDiv.style.background = '#FFEBEE';
                 return;
             }
-            
+
             if (Notification.permission === 'granted') {
                 statusDiv.innerHTML = '✅ Notificaciones HABILITADAS<br><span style="font-size: 11px;">Recibirás alertas en tiempo real</span>';
                 statusDiv.style.background = '#E8F5E9';
@@ -3758,6 +3761,28 @@ setInterval(function() {
             } else {
                 statusDiv.innerHTML = '⏳ Notificaciones DESHABILITADAS<br><span style="font-size: 11px;">Toca el botón abajo para activarlas</span>';
                 statusDiv.style.background = '#FFF3E0';
+            }
+        }
+
+        function updateCalendarConnectionStatus() {
+            const statusEl = document.getElementById('calendar-connect-status');
+            if (!statusEl) return;
+
+            const notificationMethod = document.getElementById('notification-method')?.value || 'web';
+
+            // Solo mostrar estado si Calendar está seleccionado
+            if (notificationMethod === 'calendar' || notificationMethod === 'both') {
+                statusEl.style.display = 'block';
+
+                if (googleCalendarToken) {
+                    statusEl.textContent = '✅ Google Calendar conectado';
+                    statusEl.style.color = '#4CAF50';
+                } else {
+                    statusEl.textContent = '⚠️ Conecta Google Calendar para sincronizar';
+                    statusEl.style.color = '#FF9800';
+                }
+            } else {
+                statusEl.style.display = 'none';
             }
         }
 
@@ -4017,36 +4042,39 @@ setInterval(function() {
             // Sincronizar con Google Calendar / notificaciones (errores aquí no afectan el guardado)
             try {
                 const notificationMethod = document.getElementById('notification-method')?.value || 'web';
-                if (notificationMethod === 'calendar' || notificationMethod === 'both') {
-                    if (!googleCalendarToken) {
-                        // No hay token de Calendar — informar al usuario que necesita reconectar
-                        alert('✅ Recordatorio guardado.\n\n⚠️ No estás conectado a Google Calendar.\nVe a Configuración → Notificaciones → "Reconectar Google Calendar" para sincronizar.');
-                    } else {
+                let calendarSynced = false;
+
+                // Intentar sincronizar con Google Calendar si está configurado
+                if ((notificationMethod === 'calendar' || notificationMethod === 'both') && googleCalendarToken) {
+                    try {
                         const calendarEventId = await addToGoogleCalendar(reminder);
                         if (calendarEventId && currentUser) {
                             await db.collection('users').doc(currentUser.uid)
                                 .collection('reminders')
                                 .doc(String(reminder.id))
                                 .update({ calendarEventId });
+                            calendarSynced = true;
                         }
-                        if (calendarEventId) {
-                            alert('✅ Recordatorio guardado y agregado a Google Calendar.');
-                        } else if (!googleCalendarToken) {
-                            // El token expiró durante la operación
-                            alert('✅ Recordatorio guardado.\n⚠️ Tu sesión de Google Calendar expiró.\nVe a Configuración → "Reconectar Google Calendar".');
-                        } else {
-                            alert('✅ Recordatorio guardado.\n⚠️ No se pudo sincronizar con Google Calendar. Intenta de nuevo.');
-                        }
+                    } catch (calError) {
+                        console.warn('⚠️ No se pudo sincronizar con Google Calendar:', calError);
                     }
+                }
+
+                // Programar notificación web como fallback o método principal
+                if (time && (notificationMethod === 'web' || notificationMethod === 'both' || !calendarSynced)) {
+                    await scheduleEnhancedNotification(reminder);
+                }
+
+                // Mensaje simple sin alerts molestos
+                if (calendarSynced) {
+                    alert('✅ Recordatorio guardado y sincronizado con Google Calendar.');
                 } else {
-                    if (time) {
-                        await scheduleEnhancedNotification(reminder);
-                    }
                     alert('✅ Recordatorio guardado!');
                 }
+
             } catch (notifError) {
                 console.warn('⚠️ Recordatorio guardado, pero falló la notificación:', notifError);
-                alert('✅ Recordatorio guardado.\n⚠️ No se pudo programar la notificación push.');
+                alert('✅ Recordatorio guardado!');
             }
         }
 
@@ -5047,6 +5075,7 @@ async function handleRedirectResult() {
                 }
 
                 console.log('✅ Google Calendar reconectado exitosamente vía redirect');
+                updateCalendarConnectionStatus();
                 localStorage.removeItem('pendingCalendarReconnect');
             }
         } else if (isPendingCalendarReconnect === 'true') {
@@ -5624,6 +5653,9 @@ async function saveNotificationMethod() {
 
         console.log('✅ Método de notificaciones actualizado:', method);
 
+        // Actualizar indicador visual de estado de Calendar
+        updateCalendarConnectionStatus();
+
         // Mostrar mensaje según el método
         let message = '';
         if (method === 'calendar') {
@@ -5685,6 +5717,7 @@ async function reconnectGoogleCalendar() {
                 }
                 console.log('✅ Google Calendar reconectado exitosamente');
                 if (status) { status.textContent = '✅ Google Calendar conectado correctamente'; status.style.color = '#4CAF50'; }
+                updateCalendarConnectionStatus();
             } else {
                 throw new Error('No se obtuvo token de acceso');
             }
