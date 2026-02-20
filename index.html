@@ -5646,7 +5646,7 @@ async function saveNotificationMethod() {
 
 /**
  * Reconecta Google Calendar para usuarios ya autenticados.
- * Usa popup en navegador y redirect en PWA instalada para compatibilidad con modo standalone.
+ * Usa redirect en móviles (popups bloqueados) y popup en desktop (más rápido).
  */
 async function reconnectGoogleCalendar() {
     const btn = document.getElementById('btn-reconnect-calendar');
@@ -5661,20 +5661,21 @@ async function reconnectGoogleCalendar() {
         // No pedir seleccionar cuenta, usar la sesión actual
         provider.setCustomParameters({ prompt: 'none' });
 
-        // Detectar si la app está en modo standalone (PWA instalada)
+        // Detectar si está en dispositivo móvil o PWA instalada
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches
                           || window.navigator.standalone
                           || document.referrer.includes('android-app://');
 
-        if (isStandalone) {
-            // En PWA instalada, usar redirect (los popups no funcionan bien)
-            console.log('🔄 Usando signInWithRedirect (modo standalone)');
+        // Usar redirect en móviles (los popups no funcionan bien en móviles)
+        if (isMobile || isStandalone) {
+            console.log('📱 Usando signInWithRedirect (dispositivo móvil o PWA)');
             localStorage.setItem('pendingCalendarReconnect', 'true');
             await auth.signInWithRedirect(provider);
             // El resultado se manejará en handleRedirectResult() al volver
         } else {
-            // En navegador normal, usar popup (más rápido)
-            console.log('🪟 Usando signInWithPopup (modo navegador)');
+            // En navegador de escritorio, usar popup (más rápido)
+            console.log('🖥️ Usando signInWithPopup (navegador de escritorio)');
             const result = await auth.signInWithPopup(provider);
 
             if (result.credential && result.credential.accessToken) {
