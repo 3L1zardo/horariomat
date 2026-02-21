@@ -35,56 +35,51 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Google APIs para integración con Google Calendar -->
+    <!-- Google APIs para integration con Google Calendar -->
     <!-- Estas constantes y stubs deben definirse ANTES de que los scripts async carguen -->
-    <script>
-        var CALENDAR_CLIENT_ID = '1046696947499-jsdv5lobhj5vc9af7vv02b6qsh3n83sv.apps.googleusercontent.com';
-        var CALENDAR_API_KEY = 'AIzaSyBDKybOzpS2oQWziONmgzeSks8sDdGBe1k';
-        var CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
-        var gapiInited = false;
-        var gisInited = false;
-        var tokenClient;
+<script>
+var CALENDAR_CLIENT_ID = '1046696947499-jsdv5lobhj5vc9af7vv02b6qsh3n83sv.apps.googleusercontent.com';
+var CALENDAR_API_KEY   = 'AIzaSyBDKybOzpS2oQWziONmgzeSks8sDdGBe1k';
+var CALENDAR_SCOPES    = 'https://www.googleapis.com/auth/calendar.events';
+</script>
 
-        function gapiLoaded() {
-            gapi.load('client', function() {
-                gapi.client.init({
-                    apiKey: CALENDAR_API_KEY,
-                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
-                }).then(function() {
-                    gapiInited = true;
-                    console.log('✅ Google Calendar API (GAPI) lista');
-                    // Si ya tenemos token de Firebase Auth, aplicarlo inmediatamente
-                    if (typeof googleCalendarToken !== 'undefined' && googleCalendarToken) {
-                        gapi.client.setToken({ access_token: googleCalendarToken });
-                        console.log('✅ Token de Google Calendar aplicado desde Firebase Auth');
-                    }
-                }).catch(function(err) {
-                    console.warn('⚠️ Error al inicializar GAPI:', err);
-                });
-            });
-        }
+<!-- 🧠 LÓGICA CORRECTA PARA PWA -->
+<script>
+let tokenClient;
 
-        function gisLoaded() {
-            try {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CALENDAR_CLIENT_ID,
-                    scope: CALENDAR_SCOPES,
-                    callback: '',
-                });
-                gisInited = true;
-                console.log('✅ Google Identity Services (GIS) listo');
-            } catch(err) {
-                console.warn('⚠️ Error al inicializar GIS:', err);
-            }
-        }
+window.addEventListener('load', () => {
 
-        function initGoogleCalendar() {
-            if (typeof gapi !== 'undefined' && !gapiInited) gapiLoaded();
-            if (typeof google !== 'undefined' && !gisInited) gisLoaded();
+    // Inicializa Google Calendar API
+    gapi.load('client', async () => {
+        await gapi.client.init({
+            apiKey: CALENDAR_API_KEY,
+            discoveryDocs: [
+                'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'
+            ]
+        });
+        console.log('✅ GAPI listo');
+    });
+
+    // Inicializa OAuth (GIS)
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CALENDAR_CLIENT_ID,
+        scope: CALENDAR_SCOPES,
+        callback: (tokenResponse) => {
+            gapi.client.setToken(tokenResponse);
+            console.log('✅ Token Calendar aplicado');
         }
-    </script>
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    });
+});
+
+// SOLO desde un click
+function conectarGoogleCalendar() {
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+</script>
+
+<!-- LIBRERÍAS GOOGLE (AL FINAL DEL BODY) -->
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <title>Horario ESFM Simón Bolívar</title>
     <style>
@@ -1223,7 +1218,7 @@
                 </a>
                 <span style="color: #ccc; margin: 0 8px;">|</span>
                 <a href="/terms.html" target="_blank" rel="noopener"
-                   style="font-size: 13px; color: #666; text-decoration: underline;">
+                    style="font-size: 13px; color: #666; text-decoration: underline;">
                     Condiciones de Servicio
                 </a>
                 <span style="color: #ccc; margin: 0 8px;">|</span>
