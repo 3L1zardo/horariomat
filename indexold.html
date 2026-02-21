@@ -8,7 +8,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Horario ESFM">
     <meta name="theme-color" content="#006847">
-    <meta name="google-site-verification" content="QVKYJpmBb5H8l-qwNZcoj81UTPMNUup9NqB9lhX2hM8" />
     <!-- Version: 2.1 - Fix auth screen cache issue -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -21,6 +20,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
+    <!-- Google API for Calendar -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    
 <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     
@@ -34,52 +36,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Google APIs para integration con Google Calendar -->
-    <!-- Estas constantes y stubs deben definirse ANTES de que los scripts async carguen -->
-<script>
-var CALENDAR_CLIENT_ID = '1046696947499-jsdv5lobhj5vc9af7vv02b6qsh3n83sv.apps.googleusercontent.com';
-var CALENDAR_API_KEY   = 'AIzaSyBDKybOzpS2oQWziONmgzeSks8sDdGBe1k';
-var CALENDAR_SCOPES    = 'https://www.googleapis.com/auth/calendar.events';
-</script>
-
-<!-- 🧠 LÓGICA CORRECTA PARA PWA -->
-<script>
-let tokenClient;
-
-window.addEventListener('load', () => {
-
-    // Inicializa Google Calendar API
-    gapi.load('client', async () => {
-        await gapi.client.init({
-            apiKey: CALENDAR_API_KEY,
-            discoveryDocs: [
-                'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'
-            ]
-        });
-        console.log('✅ GAPI listo');
-    });
-
-    // Inicializa OAuth (GIS)
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CALENDAR_CLIENT_ID,
-        scope: CALENDAR_SCOPES,
-        callback: (tokenResponse) => {
-            gapi.client.setToken(tokenResponse);
-            console.log('✅ Token Calendar aplicado');
-        }
-    });
-});
-
-// SOLO desde un click
-function conectarGoogleCalendar() {
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-}
-</script>
-
-<!-- LIBRERÍAS GOOGLE (AL FINAL DEL BODY) -->
-<script src="https://apis.google.com/js/api.js" async defer></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <title>Horario ESFM Simón Bolívar</title>
     <style>
@@ -855,13 +811,13 @@ function conectarGoogleCalendar() {
 </head>
 <body>
     <!-- Login Screen -->
-    <div id="auth-screen" style="display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, var(--primary), #008855); z-index: 9999; align-items: center; justify-content: center;">
+    <div id="auth-screen" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, var(--primary), #008855); z-index: 9999; display: flex; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 20px; padding: 40px 30px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <div style="text-align: center; margin-bottom: 30px;">
                 <div style="font-size: 60px; margin-bottom: 10px;">📅</div>
                 <h2 style="font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 5px;">Horario ESFM</h2>
                 <p style="color: #666; font-size: 14px;">Simón Bolívar</p>
-                        </div>
+            </div>
 
             <!-- Login/Register Tabs -->
             <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
@@ -931,6 +887,12 @@ function conectarGoogleCalendar() {
     </div>
 
     <!-- Main App (hidden until authenticated) -->
+    <div id="main-app" style="display: none;">
+    <!-- Header -->
+    <div class="header">
+        <h1>E.S.F.M. "SIMÓN BOLÍVAR"</h1>
+        <div class="subtitle">1RO MATEMÁTICA</div>
+    </div>
 
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
@@ -1168,15 +1130,9 @@ function conectarGoogleCalendar() {
                     🔔 Habilitar Notificaciones
                 </button>
 
-                <button onclick="testNotification()" style="width: 100%; padding: 10px; background: white; border: 2px solid #4CAF50; color: #4CAF50; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 8px;">
+                <button onclick="testNotification()" style="width: 100%; padding: 10px; background: white; border: 2px solid #4CAF50; color: #4CAF50; border-radius: 8px; font-weight: 600; cursor: pointer;">
                     🧪 Probar Notificación
                 </button>
-
-                <button onclick="reconnectGoogleCalendar()" id="btn-reconnect-calendar" style="width: 100%; padding: 10px; background: white; border: 2px solid #4285F4; color: #4285F4; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                    Reconectar Google Calendar
-                </button>
-                <p id="calendar-connect-status" style="font-size: 12px; color: #666; margin-top: 6px; text-align: center; display: none;"></p>
             </div>
 
             <!-- Dark Mode Settings -->
@@ -1209,31 +1165,9 @@ function conectarGoogleCalendar() {
                     💡 Tus datos están sincronizados en la nube. Puedes volver a iniciar sesión en cualquier dispositivo.
                 </p>
             </div>
-
-            <!-- Privacy Policy Link -->
-            <div style="text-align: center; padding: 20px 0 10px;">
-                <a href="/privacy-policy.html" target="_blank" rel="noopener"
-                   style="font-size: 13px; color: #666; text-decoration: underline;">
-                    Política de Privacidad
-                </a>
-                <span style="color: #ccc; margin: 0 8px;">|</span>
-                <a href="/terms.html" target="_blank" rel="noopener"
-                    style="font-size: 13px; color: #666; text-decoration: underline;">
-                    Condiciones de Servicio
-                </a>
-                <span style="color: #ccc; margin: 0 8px;">|</span>
-                <span style="font-size: 13px; color: #999;">Horario ESFM &copy; 2026</span>
-            </div>
         </div>
     </div>
     </div>
-
-    <!-- Legal Footer - always visible for Google verification -->
-    <footer id="legal-footer" style="position:fixed;bottom:60px;left:0;right:0;text-align:center;z-index:999;background:rgba(0,104,71,0.92);padding:5px 0;">
-        <a href="/privacy-policy.html" style="color:#fff;font-size:12px;text-decoration:underline;margin:0 10px;">Política de Privacidad</a>
-        <span style="color:#fff;font-size:12px;">|</span>
-        <a href="/terms.html" style="color:#fff;font-size:12px;text-decoration:underline;margin:0 10px;">Términos de Servicio</a>
-    </footer>
 
     <!-- FAB Button -->
     <button class="fab" onclick="openModal()">+</button>
@@ -1721,9 +1655,6 @@ function conectarGoogleCalendar() {
         let editingDay = null;
         let reminderFilter = 'all';
 
-        // Control de timeouts de notificaciones programadas (evita duplicados)
-        const scheduledNotificationTimeouts = new Map();
-
         // Load custom schedule from localStorage or use default
         let customSchedule = JSON.parse(localStorage.getItem('customSchedule') || 'null');
 
@@ -2154,9 +2085,6 @@ setInterval(() => {
                     } else if (currentView === 'asistencia') {
                         renderAttendance();
                         populateAttendanceSubjectFilter();
-                    } else if (currentView === 'configuracion') {
-                        updateNotificationStatus();
-                        updateCalendarConnectionStatus();
                     }
                 });
             });
@@ -2686,21 +2614,13 @@ setInterval(() => {
             try {
                 if (currentUser && (reminder.firestoreId || reminder.id)) {
                     const docId = reminder.firestoreId || String(reminder.id);
-
-                    const updateData = {
-                        completed: newStatus,
-                        completedAt: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null
-                    };
-
-                    // Si hay evento en Google Calendar → marcarlo como completado/pendiente
-                    if (reminder.calendarEventId && gapiInited && gisInited) {
-                        await markGoogleCalendarEventCompleted(reminder.calendarEventId, reminder, newStatus);
-                    }
-
                     await db.collection('users').doc(currentUser.uid)
                         .collection('reminders')
                         .doc(docId)
-                        .update(updateData);
+                        .update({
+                            completed: newStatus,
+                            completedAt: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null
+                        });
                 } else {
                     // Fallback a localStorage
                     reminders[idx].completed = newStatus;
@@ -2853,6 +2773,11 @@ setInterval(() => {
             document.getElementById('reminder-modal').classList.add('active');
             populateCategorySelect();
             populateReminderSubjectSelect();
+        }
+
+        function closeModal() {
+            document.getElementById('reminder-modal').classList.remove('active');
+            clearForm();
         }
 
         function closeModal() {
@@ -3581,10 +3506,29 @@ setInterval(() => {
             return false;
         }
 
-        // scheduleNotification: alias legacy → usa scheduleWebNotification (definida en el segundo bloque de script)
+        // Schedule notification for a reminder
 function scheduleNotification(reminder) {
-    if (typeof scheduleWebNotification === 'function') {
-        scheduleWebNotification(reminder);
+    if (!reminder.date || !reminder.time) return;
+    // Guardar en localStorage para checkeo periódico
+    const scheduled = JSON.parse(localStorage.getItem('scheduledNotifications') || '[]');
+    if (!scheduled.find(s => s.id === reminder.id)) {
+        scheduled.push({
+            id: reminder.id,
+            datetime: `${reminder.date}T${reminder.time}`,
+            notified: false
+        });
+        localStorage.setItem('scheduledNotifications', JSON.stringify(scheduled));
+    }
+    
+    const reminderDateTime = new Date(`${reminder.date}T${reminder.time}`);
+    const now = new Date();
+    const timeUntilReminder = reminderDateTime - now;
+    
+    // Schedule para tiempos cortos (menos de 24 horas)
+    if (timeUntilReminder > 0 && timeUntilReminder < 86400000) {
+        setTimeout(() => {
+            showNotification(reminder);
+        }, timeUntilReminder);
     }
 }
         // Show notification
@@ -3734,13 +3678,13 @@ setInterval(function() {
         function updateNotificationStatus() {
             const statusDiv = document.getElementById('notification-status');
             if (!statusDiv) return;
-
+            
             if (!('Notification' in window)) {
                 statusDiv.innerHTML = '❌ Tu navegador no soporta notificaciones';
                 statusDiv.style.background = '#FFEBEE';
                 return;
             }
-
+            
             if (Notification.permission === 'granted') {
                 statusDiv.innerHTML = '✅ Notificaciones HABILITADAS<br><span style="font-size: 11px;">Recibirás alertas en tiempo real</span>';
                 statusDiv.style.background = '#E8F5E9';
@@ -3750,28 +3694,6 @@ setInterval(function() {
             } else {
                 statusDiv.innerHTML = '⏳ Notificaciones DESHABILITADAS<br><span style="font-size: 11px;">Toca el botón abajo para activarlas</span>';
                 statusDiv.style.background = '#FFF3E0';
-            }
-        }
-
-        function updateCalendarConnectionStatus() {
-            const statusEl = document.getElementById('calendar-connect-status');
-            if (!statusEl) return;
-
-            const notificationMethod = document.getElementById('notification-method')?.value || 'web';
-
-            // Solo mostrar estado si Calendar está seleccionado
-            if (notificationMethod === 'calendar' || notificationMethod === 'both') {
-                statusEl.style.display = 'block';
-
-                if (googleCalendarToken) {
-                    statusEl.textContent = '✅ Google Calendar conectado';
-                    statusEl.style.color = '#4CAF50';
-                } else {
-                    statusEl.textContent = '⚠️ Conecta Google Calendar para sincronizar';
-                    statusEl.style.color = '#FF9800';
-                }
-            } else {
-                statusEl.style.display = 'none';
             }
         }
 
@@ -3989,20 +3911,19 @@ setInterval(function() {
                 return;
             }
 
-            let reminder;
-            try {
-                reminder = {
-                    id: Date.now(),
-                    type,
-                    subject,
-                    title,
-                    description,
-                    date,
-                    time,
-                    completed: false,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
+            const reminder = {
+                id: Date.now(),
+                type,
+                subject,
+                title,
+                description,
+                date,
+                time,
+                completed: false,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
 
+            try {
                 // Guardar en Firestore
                 if (currentUser) {
                     await db.collection('users').doc(currentUser.uid)
@@ -4010,60 +3931,23 @@ setInterval(function() {
                         .doc(String(reminder.id))
                         .set(reminder);
                 } else {
-                    alert('❌ No hay sesión activa. Inicia sesión para guardar recordatorios.');
-                    return;
-                }
-            } catch (error) {
-                console.error('Error al guardar recordatorio en Firestore:', error);
-                alert('❌ Error al guardar recordatorio. Verifica tu conexión e intenta de nuevo.');
-                return;
-            }
-
-            // Actualizar array local inmediatamente (UI responsiva sin esperar onSnapshot)
-            const localReminder = { ...reminder, firestoreId: String(reminder.id) };
-            delete localReminder.createdAt; // evitar el serverTimestamp sentinel no serializable
-            reminders.unshift(localReminder);
-            closeModal();
-            if (currentView === 'recordatorios') renderReminders();
-            if (currentView === 'calendario') updateCalendar();
-            // onSnapshot reconciliará el array con los datos reales de Firestore
-
-            // Sincronizar con Google Calendar / notificaciones (errores aquí no afectan el guardado)
-            try {
-                const notificationMethod = document.getElementById('notification-method')?.value || 'web';
-                let calendarSynced = false;
-
-                // Intentar sincronizar con Google Calendar si está configurado
-                if ((notificationMethod === 'calendar' || notificationMethod === 'both') && googleCalendarToken) {
-                    try {
-                        const calendarEventId = await addToGoogleCalendar(reminder);
-                        if (calendarEventId && currentUser) {
-                            await db.collection('users').doc(currentUser.uid)
-                                .collection('reminders')
-                                .doc(String(reminder.id))
-                                .update({ calendarEventId });
-                            calendarSynced = true;
-                        }
-                    } catch (calError) {
-                        console.warn('⚠️ No se pudo sincronizar con Google Calendar:', calError);
-                    }
+                    // Fallback a localStorage si no está autenticado (no debería pasar)
+                    reminders.push(reminder);
+                    localStorage.setItem('reminders', JSON.stringify(reminders));
                 }
 
-                // Programar notificación web como fallback o método principal
-                if (time && (notificationMethod === 'web' || notificationMethod === 'both' || !calendarSynced)) {
+                closeModal();
+                // renderReminders() y updateCalendar() se actualizan automáticamente con el listener
+
+                // Schedule enhanced notification (alarma mejorada)
+                if (time) {
                     await scheduleEnhancedNotification(reminder);
                 }
 
-                // Mensaje simple sin alerts molestos
-                if (calendarSynced) {
-                    alert('✅ Recordatorio guardado y sincronizado con Google Calendar.');
-                } else {
-                    alert('✅ Recordatorio guardado!');
-                }
-
-            } catch (notifError) {
-                console.warn('⚠️ Recordatorio guardado, pero falló la notificación:', notifError);
-                alert('✅ Recordatorio guardado!');
+                alert('✅ Recordatorio guardado y notificación programada!');
+            } catch (error) {
+                console.error('Error al guardar recordatorio:', error);
+                alert('❌ Error al guardar recordatorio');
             }
         }
 
@@ -4072,11 +3956,6 @@ setInterval(function() {
                 const reminder = reminders[idx];
 
                 try {
-                    // Si hay evento en Google Calendar, eliminarlo también
-                    if (reminder.calendarEventId && gapiInited && gisInited) {
-                        await deleteFromGoogleCalendar(reminder.calendarEventId);
-                    }
-
                     if (currentUser && reminder.firestoreId) {
                         await db.collection('users').doc(currentUser.uid)
                             .collection('reminders')
@@ -4900,11 +4779,19 @@ async function showNotification(reminder, customTitle = null) {
         new Notification(title, { body });
     }
 }
-// scheduleNotification: alias legacy — la implementación real es scheduleWebNotification
-// (definida más abajo en el segundo bloque de script con soporte de Map para deduplicación)
+// Programar notificaciones
 function scheduleNotification(reminder) {
-    if (typeof scheduleWebNotification === 'function') {
-        scheduleWebNotification(reminder);
+    if (!reminder.date || !reminder.time) return;
+
+    const [year, month, day] = reminder.date.split('-').map(Number);
+    const [hours, minutes] = reminder.time.split(':').map(Number);
+    const reminderDateTime = new Date(year, month - 1, day, hours, minutes);
+    const now = new Date();
+    const timeUntilReminder = reminderDateTime - now;
+
+    // Solo para la página abierta
+    if (timeUntilReminder > 0 && timeUntilReminder < 86400000) {
+        setTimeout(() => showNotification(reminder), timeUntilReminder);
     }
 }
 
@@ -4950,6 +4837,7 @@ console.log('🔥 Firebase inicializado correctamente');
 console.log('📧 Auth disponible:', !!auth);
 console.log('💾 Firestore disponible:', !!db);
 
+
 // Habilitar persistencia offline de Firestore
 db.enablePersistence({ synchronizeTabs: true })
     .catch((err) => {
@@ -4964,47 +4852,35 @@ db.enablePersistence({ synchronizeTabs: true })
 let currentUser = null;
 let userDataUnsubscribers = [];
 
-// Token de acceso de Google (obtenido del inicio de sesión con Firebase)
-// Se usa para llamadas directas a Google Calendar API sin popup adicional
-let googleCalendarToken = null;
-
 // Clave VAPID
 const VAPID_KEY = 'BBHwc5Mppt2z98YM4uazXcDnI6luBVutOdbmcBdIg9fqGxR9avIEDeONgnq9U33vK5wbE3LpJ1LFXtAhov9qMfY';
 
-// Google Calendar API Config (constantes definidas en <head> para evitar conflicto de timing)
+// Google Calendar API Config
+const CALENDAR_CLIENT_ID = '1046696947499-YOUR_OAUTH_CLIENT.apps.googleusercontent.com'; // Necesitarás configurar esto
+const CALENDAR_API_KEY = 'YOUR_API_KEY'; // Necesitarás configurar esto
+const CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
-// Solicitar permiso y obtener token FCM, guardarlo en Firestore para push en background
+// Solicitar permiso y obtener token
 async function initFirebasePush() {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
             const token = await messaging.getToken({ vapidKey: VAPID_KEY });
-            if (!token) return null;
-            console.log('📱 Token FCM obtenido');
+            console.log('📱 Token FCM:', token);
+            // Guarda este token para enviar notificaciones después
             localStorage.setItem('fcmToken', token);
-
-            // Guardar token en Firestore para que el servidor pueda enviar notificaciones
-            if (currentUser) {
-                await db.collection('users').doc(currentUser.uid).set(
-                    { fcmToken: token, fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() },
-                    { merge: true }
-                );
-                console.log('✅ Token FCM guardado en Firestore');
-            }
             return token;
         }
     } catch (error) {
         console.error('Error FCM:', error);
     }
-    return null;
 }
 
 // Recibir mensajes cuando la app está ABIERTA
 messaging.onMessage((payload) => {
     console.log('📩 Mensaje recibido:', payload);
-    if (!payload.notification) return;
     const { title, body } = payload.notification;
-    new Notification(title, {
+    new Notification(title, { 
         body: body,
         icon: 'icon-192.png'
     });
@@ -5037,56 +4913,6 @@ function formatLocalDate(date) {
 // SISTEMA DE AUTENTICACIÓN
 // ==============================================
 
-// Manejar resultado de signInWithRedirect (para PWAs en modo standalone)
-async function handleRedirectResult() {
-    try {
-        const result = await auth.getRedirectResult();
-
-        // Verificar si hay un redirect pendiente
-        const isPendingCalendarReconnect = localStorage.getItem('pendingCalendarReconnect');
-
-        if (result && result.credential && result.credential.accessToken) {
-            console.log('✅ Redirect completado exitosamente');
-
-            // Si era una reconexión de Google Calendar
-            if (isPendingCalendarReconnect === 'true') {
-                googleCalendarToken = result.credential.accessToken;
-                if (gapiInited) {
-                    gapi.client.setToken({ access_token: googleCalendarToken });
-                }
-
-                // Mostrar mensaje de éxito
-                const status = document.getElementById('calendar-connect-status');
-                if (status) {
-                    status.style.display = 'block';
-                    status.textContent = '✅ Google Calendar conectado correctamente';
-                    status.style.color = '#4CAF50';
-                }
-
-                console.log('✅ Google Calendar reconectado exitosamente vía redirect');
-                updateCalendarConnectionStatus();
-                localStorage.removeItem('pendingCalendarReconnect');
-            }
-        } else if (isPendingCalendarReconnect === 'true') {
-            // Si esperábamos un resultado pero no llegó, limpiar flag
-            localStorage.removeItem('pendingCalendarReconnect');
-        }
-    } catch (error) {
-        console.error('Error al procesar redirect result:', error);
-        localStorage.removeItem('pendingCalendarReconnect');
-
-        const status = document.getElementById('calendar-connect-status');
-        if (status && localStorage.getItem('pendingCalendarReconnect') === 'true') {
-            status.style.display = 'block';
-            status.textContent = '❌ Error al conectar. Intenta nuevamente.';
-            status.style.color = '#f44336';
-        }
-    }
-}
-
-// Llamar al cargar la app para procesar redirects pendientes
-handleRedirectResult();
-
 // Observer de autenticación
 auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -5094,10 +4920,8 @@ auth.onAuthStateChanged(async (user) => {
         console.log('✅ Usuario autenticado:', user.email);
 
         // Mostrar app principal
-        const authScreenEl = document.getElementById('auth-screen');
-        const mainAppEl = document.getElementById('main-app');
-        if (authScreenEl) authScreenEl.style.display = 'none';
-        if (mainAppEl) mainAppEl.style.display = 'block';
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
 
         // Actualizar header con nombre de usuario
         const subtitle = document.querySelector('.header .subtitle');
@@ -5128,9 +4952,6 @@ auth.onAuthStateChanged(async (user) => {
         // Iniciar listeners de sincronización en tiempo real
         setupRealtimeListeners(user.uid);
 
-        // Registrar token FCM para notificaciones en segundo plano
-        initFirebasePush();
-
     } else {
         currentUser = null;
         console.log('❌ Usuario no autenticado');
@@ -5139,15 +4960,9 @@ auth.onAuthStateChanged(async (user) => {
         userDataUnsubscribers.forEach(unsub => unsub());
         userDataUnsubscribers = [];
 
-        // Resetear subtitle al valor original
-        const subtitleLogout = document.querySelector('.header .subtitle');
-        if (subtitleLogout) subtitleLogout.textContent = '1RO MATEMÁTICA';
-
         // Mostrar pantalla de login
-        const authScreenLogout = document.getElementById('auth-screen');
-        const mainAppLogout = document.getElementById('main-app');
-        if (authScreenLogout) authScreenLogout.style.display = 'flex';
-        if (mainAppLogout) mainAppLogout.style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'none';
     }
 });
 
@@ -5179,12 +4994,8 @@ function switchAuthTab(tab) {
 
 // Login con email/password
 async function loginWithEmail() {
-    console.log('🔐 Intentando login...');
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-
-    console.log('📧 Email:', email);
-    console.log('🔑 Password length:', password.length);
 
     if (!email || !password) {
         showAuthError('Por favor completa todos los campos');
@@ -5195,16 +5006,11 @@ async function loginWithEmail() {
     hideAuthError();
 
     try {
-        console.log('⏳ Llamando a signInWithEmailAndPassword...');
-        const result = await auth.signInWithEmailAndPassword(email, password);
-        console.log('✅ Login exitoso!', result.user.email);
+        await auth.signInWithEmailAndPassword(email, password);
         // El onAuthStateChanged se encargará del resto
     } catch (error) {
-        console.error('❌ Error login completo:', error);
-        console.error('❌ Código de error:', error.code);
-        console.error('❌ Mensaje:', error.message);
-
-        let message = 'Error al iniciar sesión: ' + (error.message || error.code);
+        console.error('Error login:', error);
+        let message = 'Error al iniciar sesión';
 
         if (error.code === 'auth/user-not-found') {
             message = 'No existe una cuenta con este correo';
@@ -5224,15 +5030,10 @@ async function loginWithEmail() {
 
 // Registro con email/password
 async function registerWithEmail() {
-    console.log('📝 Intentando registro...');
     const name = document.getElementById('register-name').value.trim();
     const email = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
     const passwordConfirm = document.getElementById('register-password-confirm').value;
-
-    console.log('👤 Nombre:', name);
-    console.log('📧 Email:', email);
-    console.log('🔑 Password length:', password.length);
 
     if (!name || !email || !password || !passwordConfirm) {
         showAuthError('Por favor completa todos los campos');
@@ -5253,19 +5054,14 @@ async function registerWithEmail() {
     hideAuthError();
 
     try {
-        console.log('⏳ Llamando a createUserWithEmailAndPassword...');
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        console.log('✅ Usuario creado en Auth:', userCredential.user.uid);
 
         // Actualizar perfil con nombre
-        console.log('⏳ Actualizando perfil con nombre...');
         await userCredential.user.updateProfile({
             displayName: name
         });
-        console.log('✅ Perfil actualizado');
 
         // Crear documento de perfil en Firestore
-        console.log('⏳ Guardando datos en Firestore...');
         await db.collection('users').doc(userCredential.user.uid).set({
             name: name,
             email: email,
@@ -5273,16 +5069,12 @@ async function registerWithEmail() {
             notificationMethod: 'web', // Default: Web notifications
             theme: 'light'
         });
-        console.log('✅ Datos guardados en Firestore');
 
-        console.log('✅ Usuario registrado completamente:', email);
+        console.log('✅ Usuario registrado:', email);
         // El onAuthStateChanged se encargará del resto
     } catch (error) {
-        console.error('❌ Error registro completo:', error);
-        console.error('❌ Código de error:', error.code);
-        console.error('❌ Mensaje:', error.message);
-
-        let message = 'Error al crear la cuenta: ' + (error.message || error.code);
+        console.error('Error registro:', error);
+        let message = 'Error al crear la cuenta';
 
         if (error.code === 'auth/email-already-in-use') {
             message = 'Ya existe una cuenta con este correo';
@@ -5290,10 +5082,6 @@ async function registerWithEmail() {
             message = 'Correo electrónico inválido';
         } else if (error.code === 'auth/weak-password') {
             message = 'La contraseña es muy débil';
-        } else if (error.code === 'permission-denied' || error.code === 'firestore/permission-denied') {
-            message = 'Error de permisos en base de datos. Contacta al administrador.';
-        } else if (error.code) {
-            message = 'Error al crear la cuenta (' + error.code + ')';
         }
 
         showAuthError(message);
@@ -5309,23 +5097,11 @@ async function loginWithGoogle() {
 
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
-        // Solicitar permisos de Google Calendar en el mismo inicio de sesión
-        provider.addScope('https://www.googleapis.com/auth/calendar.events');
         provider.setCustomParameters({
             prompt: 'select_account'
         });
 
         const result = await auth.signInWithPopup(provider);
-
-        // Guardar el access token de Google para usar con Calendar API directamente
-        if (result.credential && result.credential.accessToken) {
-            googleCalendarToken = result.credential.accessToken;
-            console.log('✅ Token de Google Calendar obtenido del inicio de sesión');
-            // Aplicar al cliente GAPI si ya está inicializado
-            if (gapiInited) {
-                gapi.client.setToken({ access_token: googleCalendarToken });
-            }
-        }
 
         // Crear/actualizar perfil en Firestore
         const userDoc = await db.collection('users').doc(result.user.uid).get();
@@ -5346,20 +5122,8 @@ async function loginWithGoogle() {
     } catch (error) {
         console.error('Error Google login:', error);
 
-        if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-            // El usuario cerró el popup, no mostrar error
-        } else if (error.code === 'auth/unauthorized-domain') {
-            showAuthError('⚠️ Dominio no autorizado. Pide al administrador que agregue este dominio en Firebase Console → Authentication → Authorized domains.');
-        } else if (error.message && error.message.includes('redirect_uri_mismatch')) {
-            const currentOrigin = window.location.origin;
-            showAuthError(`⚠️ Error de configuración OAuth.\n\n` +
-                `1. Ve a: https://console.cloud.google.com/apis/credentials\n` +
-                `2. Edita tu OAuth Client ID\n` +
-                `3. En "Authorized JavaScript origins" agrega:\n   ${currentOrigin}\n` +
-                `4. En "Authorized redirect URIs" agrega:\n   ${currentOrigin}/__/auth/handler\n` +
-                `5. Guarda y espera 2 minutos`);
-        } else {
-            showAuthError('Error al iniciar sesión con Google: ' + (error.message || error.code || 'error desconocido'));
+        if (error.code !== 'auth/popup-closed-by-user') {
+            showAuthError('Error al iniciar sesión con Google');
         }
     } finally {
         showAuthLoading(false);
@@ -5548,19 +5312,6 @@ function setupRealtimeListeners(userId) {
                 updateCalendar();
             }
 
-            // Reprogramar notificaciones para todos los recordatorios futuros no completados
-            const now = new Date();
-            reminders.forEach(reminder => {
-                if (!reminder.completed && reminder.date && reminder.time) {
-                    const reminderDate = parseLocalDate(reminder.date);
-                    const [h, m] = reminder.time.split(':').map(Number);
-                    reminderDate.setHours(h, m, 0, 0);
-                    if (reminderDate > now) {
-                        scheduleWebNotification(reminder);
-                    }
-                }
-            });
-
             console.log(`🔄 Recordatorios sincronizados: ${reminders.length}`);
         }, (error) => {
             console.error('Error listener recordatorios:', error);
@@ -5648,9 +5399,6 @@ async function saveNotificationMethod() {
 
         console.log('✅ Método de notificaciones actualizado:', method);
 
-        // Actualizar indicador visual de estado de Calendar
-        updateCalendarConnectionStatus();
-
         // Mostrar mensaje según el método
         let message = '';
         if (method === 'calendar') {
@@ -5668,66 +5416,6 @@ async function saveNotificationMethod() {
     } catch (error) {
         console.error('Error al guardar método de notificaciones:', error);
         alert('❌ Error al guardar configuración');
-    }
-}
-
-/**
- * Reconecta Google Calendar para usuarios ya autenticados.
- * Usa redirect en móviles (popups bloqueados) y popup en desktop (más rápido).
- */
-async function reconnectGoogleCalendar() {
-    const btn = document.getElementById('btn-reconnect-calendar');
-    const status = document.getElementById('calendar-connect-status');
-
-    if (btn) btn.disabled = true;
-    if (status) { status.style.display = 'block'; status.textContent = 'Conectando con Google Calendar...'; status.style.color = '#666'; }
-
-    try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/calendar.events');
-        // No pedir seleccionar cuenta, usar la sesión actual
-        provider.setCustomParameters({ prompt: 'none' });
-
-        // Detectar si está en dispositivo móvil o PWA instalada
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-                          || window.navigator.standalone
-                          || document.referrer.includes('android-app://');
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-        // Usar popup en localhost/desarrollo (más fácil de configurar)
-        // Usar redirect en móviles en producción (los popups no funcionan bien en móviles)
-        if ((isMobile || isStandalone) && !isLocalhost) {
-            console.log('📱 Usando signInWithRedirect (dispositivo móvil o PWA)');
-            localStorage.setItem('pendingCalendarReconnect', 'true');
-            await auth.signInWithRedirect(provider);
-            // El resultado se manejará en handleRedirectResult() al volver
-        } else {
-            // En navegador de escritorio O desarrollo local, usar popup (más rápido)
-            console.log('🖥️ Usando signInWithPopup (navegador de escritorio o desarrollo)');
-            const result = await auth.signInWithPopup(provider);
-
-            if (result.credential && result.credential.accessToken) {
-                googleCalendarToken = result.credential.accessToken;
-                if (gapiInited) {
-                    gapi.client.setToken({ access_token: googleCalendarToken });
-                }
-                console.log('✅ Google Calendar reconectado exitosamente');
-                if (status) { status.textContent = '✅ Google Calendar conectado correctamente'; status.style.color = '#4CAF50'; }
-                updateCalendarConnectionStatus();
-            } else {
-                throw new Error('No se obtuvo token de acceso');
-            }
-        }
-    } catch (error) {
-        console.error('Error al reconectar Google Calendar:', error);
-        if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-            if (status) { status.textContent = 'Cancelado por el usuario.'; status.style.color = '#999'; }
-        } else {
-            if (status) { status.textContent = '❌ Error al conectar. Intenta cerrar sesión e iniciar nuevamente.'; status.style.color = '#f44336'; }
-        }
-    } finally {
-        if (btn) btn.disabled = false;
     }
 }
 
@@ -5779,8 +5467,24 @@ async function scheduleEnhancedNotification(reminder) {
         return;
     }
 
-    // Solo notificaciones web — Google Calendar se maneja en saveReminder
-    scheduleWebNotification(reminder);
+    // Obtener método de notificaciones del usuario
+    let notificationMethod = 'web'; // Default
+    if (currentUser) {
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        if (userDoc.exists) {
+            notificationMethod = userDoc.data().notificationMethod || 'web';
+        }
+    }
+
+    // Google Calendar
+    if (notificationMethod === 'calendar' || notificationMethod === 'both') {
+        await addToGoogleCalendar(reminder);
+    }
+
+    // Web Notifications
+    if (notificationMethod === 'web' || notificationMethod === 'both') {
+        scheduleWebNotification(reminder);
+    }
 }
 
 /**
@@ -5794,33 +5498,18 @@ function scheduleWebNotification(reminder) {
     const now = new Date();
     const timeUntilReminder = reminderDate - now;
 
-    // Cancelar timeouts previos de este recordatorio para evitar duplicados
-    if (scheduledNotificationTimeouts.has(reminder.id)) {
-        clearTimeout(scheduledNotificationTimeouts.get(reminder.id));
-        scheduledNotificationTimeouts.delete(reminder.id);
-    }
-    const beforeKey = `${reminder.id}_before`;
-    if (scheduledNotificationTimeouts.has(beforeKey)) {
-        clearTimeout(scheduledNotificationTimeouts.get(beforeKey));
-        scheduledNotificationTimeouts.delete(beforeKey);
-    }
-
     if (timeUntilReminder > 0) {
-        // Programar notificación exacta
-        const timeoutId = setTimeout(() => {
+        // Programar notificación
+        setTimeout(() => {
             showAlarmNotification(reminder);
-            scheduledNotificationTimeouts.delete(reminder.id);
         }, timeUntilReminder);
-        scheduledNotificationTimeouts.set(reminder.id, timeoutId);
 
         // También programar recordatorio 15 minutos antes
         const reminderBefore = timeUntilReminder - (15 * 60 * 1000);
         if (reminderBefore > 0) {
-            const beforeId = setTimeout(() => {
+            setTimeout(() => {
                 showAlarmNotification(reminder, true);
-                scheduledNotificationTimeouts.delete(beforeKey);
             }, reminderBefore);
-            scheduledNotificationTimeouts.set(beforeKey, beforeId);
         }
 
         console.log(`⏰ Notificación programada para ${reminder.date} ${reminder.time}`);
@@ -5884,170 +5573,104 @@ async function showAlarmNotification(reminder, isBefore = false) {
 // ==============================================
 // INTEGRACIÓN CON GOOGLE CALENDAR
 // ==============================================
-// gapiInited, gisInited, tokenClient, gapiLoaded(), gisLoaded(), initGoogleCalendar()
-// están definidos en <head> para evitar problemas de timing con scripts async.
+
+let gapiInited = false;
+let gisInited = false;
+let tokenClient;
 
 /**
- * Asegura que el cliente GAPI tenga un token válido.
- * Usa el token de Firebase Auth si está disponible.
- * Devuelve true si hay token listo, false si no.
+ * Inicializa Google Calendar API
  */
-async function ensureCalendarToken() {
-    if (!gapiInited) {
-        initGoogleCalendar();
-        await new Promise(r => setTimeout(r, 2000));
-        if (!gapiInited) return false;
-    }
-    if (googleCalendarToken) {
-        gapi.client.setToken({ access_token: googleCalendarToken });
-        return true;
-    }
-    // No hay token de Firebase Auth disponible
-    console.warn('⚠️ Token de Google Calendar no disponible. El usuario necesita reconectar.');
-    return false;
+function initGoogleCalendar() {
+    // Cargar GAPI
+    gapi.load('client', async () => {
+        await gapi.client.init({
+            apiKey: CALENDAR_API_KEY,
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+        });
+        gapiInited = true;
+        console.log('✅ Google Calendar API inicializada');
+    });
+
+    // Cargar GIS (Google Identity Services)
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CALENDAR_CLIENT_ID,
+        scope: CALENDAR_SCOPES,
+        callback: '', // Se define en cada uso
+    });
+    gisInited = true;
 }
 
 /**
- * Agrega un recordatorio a Google Calendar.
- * Retorna el ID del evento creado, o null si falla.
+ * Agrega un recordatorio a Google Calendar
  */
 async function addToGoogleCalendar(reminder) {
-    const tokenReady = await ensureCalendarToken();
-    if (!tokenReady) {
-        console.warn('⚠️ No se puede sincronizar con Google Calendar: sin token');
-        return null;
+    if (!gapiInited || !gisInited) {
+        console.log('⚠️ Google Calendar no inicializado. Inicializando...');
+        initGoogleCalendar();
+
+        // Esperar un momento para que inicialice
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    try {
-        const reminderDate = parseLocalDate(reminder.date);
-        const [hours, minutes] = (reminder.time || '09:00').split(':').map(Number);
+    // Pedir autorización
+    tokenClient.callback = async (response) => {
+        if (response.error !== undefined) {
+            console.error('Error de autorización:', response);
+            return;
+        }
 
-        const startDateTime = new Date(reminderDate);
-        startDateTime.setHours(hours, minutes, 0, 0);
+        // Crear evento
+        try {
+            const reminderDate = parseLocalDate(reminder.date);
+            const [hours, minutes] = reminder.time.split(':').map(Number);
 
-        const endDateTime = new Date(startDateTime);
-        endDateTime.setHours(hours + 1, minutes, 0, 0);
+            const startDateTime = new Date(reminderDate);
+            startDateTime.setHours(hours, minutes, 0, 0);
 
-        const categoryEmoji = {
-            tarea: '📝', examen: '📄', exposicion: '🎤',
-            evento: '🎉', congreso: '🎓', otro: '📌'
-        }[reminder.type] || '📌';
+            const endDateTime = new Date(startDateTime);
+            endDateTime.setHours(hours + 1, minutes, 0, 0); // 1 hora de duración por defecto
 
-        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const event = {
+                summary: reminder.title,
+                description: `${reminder.subject || ''}\n\n${reminder.description || ''}`.trim(),
+                start: {
+                    dateTime: startDateTime.toISOString(),
+                    timeZone: 'America/La_Paz' // Bolivia timezone
+                },
+                end: {
+                    dateTime: endDateTime.toISOString(),
+                    timeZone: 'America/La_Paz'
+                },
+                reminders: {
+                    useDefault: false,
+                    overrides: [
+                        { method: 'popup', minutes: 15 },
+                        { method: 'popup', minutes: 0 }
+                    ]
+                },
+                colorId: '9' // Color azul para recordatorios
+            };
 
-        const event = {
-            summary: `${categoryEmoji} ${reminder.title}`,
-            description: [
-                reminder.subject && `Materia: ${reminder.subject}`,
-                reminder.description
-            ].filter(Boolean).join('\n\n') + '\n\n— HorarioMat',
-            start: { dateTime: startDateTime.toISOString(), timeZone },
-            end: { dateTime: endDateTime.toISOString(), timeZone },
-            reminders: {
-                useDefault: false,
-                overrides: [
-                    { method: 'popup', minutes: 15 },
-                    { method: 'popup', minutes: 0 }
-                ]
-            },
-            colorId: '9'
-        };
+            const request = await gapi.client.calendar.events.insert({
+                calendarId: 'primary',
+                resource: event
+            });
 
-        const calResponse = await gapi.client.calendar.events.insert({
-            calendarId: 'primary',
-            resource: event
-        });
+            console.log('✅ Evento creado en Google Calendar:', request.result.htmlLink);
+            alert('✅ Recordatorio agregado a tu Google Calendar!\n\nRecibirás notificaciones de tu calendario.');
 
-        const eventId = calResponse.result.id;
-        console.log('✅ Evento creado en Google Calendar:', eventId);
-        return eventId;
-
-    } catch (error) {
-        if (error.status === 401) {
-            // Token expirado (dura ~1 hora), limpiar para pedir reconexión
-            googleCalendarToken = null;
-            console.warn('⚠️ Token de Google Calendar expirado. El usuario debe reconectar.');
-        } else {
+        } catch (error) {
             console.error('Error al crear evento en Calendar:', error);
+            alert('❌ No se pudo agregar al calendario. Inténtalo de nuevo.');
         }
-        return null;
-    }
-}
+    };
 
-/**
- * Elimina un evento de Google Calendar por su ID.
- */
-async function deleteFromGoogleCalendar(eventId) {
-    if (!eventId) return false;
-
-    const tokenReady = await ensureCalendarToken();
-    if (!tokenReady) return false;
-
-    try {
-        await gapi.client.calendar.events.delete({
-            calendarId: 'primary',
-            eventId: eventId
-        });
-        console.log('✅ Evento eliminado de Google Calendar');
-        return true;
-    } catch (error) {
-        // Si el evento ya no existe (404/410), no es un error real
-        if (error.status === 404 || error.status === 410) {
-            return true;
-        }
-        if (error.status === 401) {
-            googleCalendarToken = null;
-        }
-        console.error('Error al eliminar evento de Calendar:', error);
-        return false;
-    }
-}
-
-/**
- * Marca un evento de Google Calendar como completado (✅ en título, color gris)
- * o lo restaura a su estado original si se desmarca.
- */
-async function markGoogleCalendarEventCompleted(eventId, reminder, completed) {
-    if (!eventId) return false;
-
-    const tokenReady = await ensureCalendarToken();
-    if (!tokenReady) return false;
-
-    try {
-        let patchData;
-        if (completed) {
-            patchData = {
-                summary: `✅ ${reminder.title}`,
-                colorId: '8' // graphite/gris
-            };
-            console.log('✅ Evento marcado como completado en Google Calendar');
-        } else {
-            const categoryEmoji = {
-                tarea: '📝', examen: '📄', exposicion: '🎤',
-                evento: '🎉', congreso: '🎓', otro: '📌'
-            }[reminder.type] || '📌';
-            patchData = {
-                summary: `${categoryEmoji} ${reminder.title}`,
-                colorId: '9'
-            };
-            console.log('↩️ Evento restaurado como pendiente en Google Calendar');
-        }
-
-        await gapi.client.calendar.events.patch({
-            calendarId: 'primary',
-            eventId: eventId,
-            resource: patchData
-        });
-        return true;
-    } catch (error) {
-        if (error.status === 404 || error.status === 410) {
-            return true; // El evento ya no existe, no es un error real
-        }
-        if (error.status === 401) {
-            googleCalendarToken = null;
-        }
-        console.error('Error al actualizar estado del evento en Calendar:', error);
-        return false;
+    // Solicitar token
+    if (gapi.client.getToken() === null) {
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+        tokenClient.requestAccessToken({ prompt: '' });
     }
 }
 
