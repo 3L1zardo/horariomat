@@ -130,11 +130,14 @@ function conectarGoogleCalendar() {
         .header {
             background: linear-gradient(135deg, var(--primary), #008855);
             color: white;
-            padding: 15px 20px;
+            padding: 10px 16px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             position: sticky;
             top: 0;
             z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .header h1 {
@@ -931,6 +934,17 @@ function conectarGoogleCalendar() {
     </div>
 
     <!-- Main App (hidden until authenticated) -->
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h1>E.S.F.M. "SIMÓN BOLÍVAR"</h1>
+            <div class="subtitle" id="header-subtitle">1RO MATEMÁTICA</div>
+        </div>
+        <div id="header-user-info" style="display: none; align-items: center; gap: 8px; flex-direction: column; text-align: center;">
+            <img id="user-avatar" src="" alt="Foto" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); object-fit: cover; display: none;">
+            <div id="user-display-name" style="font-size: 11px; color: rgba(255,255,255,0.9); font-weight: 600; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
+        </div>
+    </div>
 
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
@@ -1172,9 +1186,22 @@ function conectarGoogleCalendar() {
                     🧪 Probar Notificación
                 </button>
 
+                <!-- Sección para usuarios Google (auto-sync) -->
+                <div id="google-auto-sync-section" style="display: none; background: #E8F5E9; border: 1px solid #A5D6A7; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                    <div style="font-size: 13px; color: #2E7D32; font-weight: 600; margin-bottom: 6px;">
+                        🟢 Google Calendar — Sincronización automática activa
+                    </div>
+                    <div style="font-size: 12px; color: #388E3C;">
+                        Tu cuenta Google sincroniza los recordatorios automáticamente. No necesitas reconectar.
+                    </div>
+                    <button onclick="autoRenewGoogleCalendarToken()" id="btn-renew-calendar" style="width: 100%; margin-top: 8px; padding: 8px; background: white; border: 1px solid #4CAF50; color: #2E7D32; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600;">
+                        🔄 Renovar token si es necesario
+                    </button>
+                </div>
+                <!-- Sección para usuarios no-Google (reconectar manual) -->
                 <button onclick="reconnectGoogleCalendar()" id="btn-reconnect-calendar" style="width: 100%; padding: 10px; background: white; border: 2px solid #4285F4; color: #4285F4; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                    Reconectar Google Calendar
+                    Conectar Google Calendar
                 </button>
                 <p id="calendar-connect-status" style="font-size: 12px; color: #666; margin-top: 6px; text-align: center; display: none;"></p>
             </div>
@@ -1198,9 +1225,13 @@ function conectarGoogleCalendar() {
             <!-- User Account Section -->
             <div style="background: #FFEBEE; padding: 15px; border-radius: 10px; margin-top: 15px;">
                 <h3 style="margin-bottom: 10px; color: #C62828;">👤 Cuenta de Usuario</h3>
-                <div id="user-info" style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px;">
-                    <div style="font-weight: 600; margin-bottom: 5px;">Email:</div>
-                    <div id="user-email" style="color: #666;">Cargando...</div>
+                <div id="user-info" style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; display: flex; align-items: center; gap: 12px;">
+                    <img id="user-settings-avatar" src="" alt="" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; display: none; flex-shrink: 0; border: 2px solid #ddd;">
+                    <div>
+                        <div id="user-settings-name" style="font-weight: 700; color: #333; margin-bottom: 3px;"></div>
+                        <div style="font-weight: 600; font-size: 12px; color: #999; margin-bottom: 2px;">Email:</div>
+                        <div id="user-email" style="color: #666; font-size: 13px;">Cargando...</div>
+                    </div>
                 </div>
                 <button onclick="logout()" style="width: 100%; padding: 12px; background: #F44336; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                     🚪 Cerrar Sesión
@@ -1238,11 +1269,11 @@ function conectarGoogleCalendar() {
     <!-- FAB Button -->
     <button class="fab" onclick="openModal()">+</button>
 
-    <!-- Modal for Adding Reminder -->
+    <!-- Modal for Adding/Editing Reminder -->
     <div class="modal" id="reminder-modal">
         <div class="modal-content">
             <div class="modal-header">
-                Agregar Recordatorio
+                <span id="reminder-modal-header">Agregar Recordatorio</span>
                 <button onclick="openCategoryManager()" style="float: right; background: #E3F2FD; color: #1565C0; border: none; padding: 5px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; font-weight: 500;">
                     🏷️ Gestionar Categorías
                 </button>
@@ -1275,7 +1306,7 @@ function conectarGoogleCalendar() {
             </div>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-                <button class="btn-save" onclick="saveReminder()">Guardar</button>
+                <button class="btn-save" id="reminder-save-btn" onclick="saveReminder()">Guardar</button>
             </div>
         </div>
     </div>
@@ -1720,6 +1751,7 @@ function conectarGoogleCalendar() {
         let editingClassIndex = null;
         let editingDay = null;
         let reminderFilter = 'all';
+        let editingReminderIdx = null;
 
         // Control de timeouts de notificaciones programadas (evita duplicados)
         const scheduledNotificationTimeouts = new Map();
@@ -2154,6 +2186,10 @@ setInterval(() => {
                     } else if (currentView === 'asistencia') {
                         renderAttendance();
                         populateAttendanceSubjectFilter();
+                    } else if (currentView === 'configuracion') {
+                        updateNotificationStatus();
+                        updateCalendarConnectionStatus();
+                        updateCalendarSectionForUser();
                     }
                 });
             });
@@ -2471,7 +2507,7 @@ setInterval(() => {
                         ${isCurrent ? '<div class="current-badge">EN CURSO 🟢</div>' : ''}
                         ${isPast ? '<div class="past-badge">✅ COMPLETADO</div>' : ''}
                         <div class="actions">
-                            <button class="btn-note" onclick="event.stopPropagation(); addQuickNote('${selectedDay}', ${idx})">📝 Nota Rápida</button>
+                            <button class="btn-note" onclick="event.stopPropagation(); editClass('${selectedDay}', ${idx})">✏️ Editar</button>
                             <button class="btn-reminder" onclick="event.stopPropagation(); addReminderFor('${cls.subject.replace(/'/g, "\\'")}', '${selectedDay}')">⏰ Recordar</button>
                         </div>
                     </div>
@@ -2648,20 +2684,59 @@ setInterval(() => {
                 const date = parseLocalDate(reminder.date);
                 const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
                 const category = getCategoryById(reminder.type);
-                
+
+                // --- Semáforo de días restantes ---
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const reminderDate = parseLocalDate(reminder.date);
+                reminderDate.setHours(0,0,0,0);
+                const diffMs = reminderDate - today;
+                const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+                let semaforoColor, semaforoBg, semaforoLabel, semaforoBorder;
+                if (reminder.completed) {
+                    semaforoColor = '#757575'; semaforoBg = '#f5f5f5'; semaforoBorder = '#bdbdbd';
+                    semaforoLabel = '✅ Completado';
+                } else if (diffDays < 0) {
+                    semaforoColor = '#C62828'; semaforoBg = '#FFEBEE'; semaforoBorder = '#EF9A9A';
+                    semaforoLabel = `🔴 Vencido hace ${Math.abs(diffDays)} día${Math.abs(diffDays) !== 1 ? 's' : ''}`;
+                } else if (diffDays <= 2) {
+                    semaforoColor = '#E65100'; semaforoBg = '#FFF3E0'; semaforoBorder = '#FFCC80';
+                    semaforoLabel = diffDays === 0 ? '🟠 ¡Vence hoy!' : `🟠 ¡${diffDays} día${diffDays !== 1 ? 's' : ''} restante${diffDays !== 1 ? 's' : ''}!`;
+                } else if (diffDays <= 5) {
+                    semaforoColor = '#2E7D32'; semaforoBg = '#E8F5E9'; semaforoBorder = '#A5D6A7';
+                    semaforoLabel = `🟢 ${diffDays} días restantes`;
+                } else {
+                    semaforoColor = '#1565C0'; semaforoBg = '#E3F2FD'; semaforoBorder = '#90CAF9';
+                    semaforoLabel = `🔵 ${diffDays} días restantes`;
+                }
+
+                const editadoBadge = reminder.editedAt
+                    ? `<span style="font-size: 10px; background: #FFF8E1; color: #F57F17; border: 1px solid #FFE082; border-radius: 4px; padding: 2px 6px; margin-left: 6px; font-weight: 600;">✏️ EDITADO</span>`
+                    : '';
+
                 return `
-                    <div class="reminder-item ${reminder.type} ${reminder.completed ? 'completed' : ''}">
-                        <div class="category-badge" style="background: ${category.color}22; color: ${category.color};">
-                            ${category.icon} ${category.name.toUpperCase()}
+                    <div class="reminder-item ${reminder.type} ${reminder.completed ? 'completed' : ''}"
+                         style="border-left: 4px solid ${semaforoBorder};">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                            <div class="category-badge" style="background: ${category.color}22; color: ${category.color}; margin-bottom: 0;">
+                                ${category.icon} ${category.name.toUpperCase()}
+                            </div>
+                            <div style="font-size: 11px; font-weight: 700; color: ${semaforoColor}; background: ${semaforoBg}; border: 1px solid ${semaforoBorder}; border-radius: 12px; padding: 3px 8px; white-space: nowrap;">
+                                ${semaforoLabel}
+                            </div>
                         </div>
-                        <div class="title">${reminder.title}</div>
+                        <div class="title">${reminder.title}${editadoBadge}</div>
                         ${reminder.subject ? `<div style="font-size: 13px; color: #666; margin-bottom: 5px;">${reminder.subject}</div>` : ''}
                         ${reminder.description ? `<div style="font-size: 13px; margin-bottom: 5px;">${reminder.description}</div>` : ''}
                         <div class="date">📅 ${date.toLocaleDateString('es-BO', options)} ${reminder.time ? `⏰ ${reminder.time}` : ''}</div>
-                        
+
                         <div class="reminder-actions">
                             <button class="btn-complete" onclick="toggleComplete(${actualIdx})">
                                 ${reminder.completed ? '↩️ Desmarcar' : '✅ Completar'}
+                            </button>
+                            <button style="padding: 8px 12px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-size: 13px; cursor: pointer; font-weight: 500;" onclick="openEditReminder(${actualIdx})">
+                                ✏️ Editar
                             </button>
                             <button class="btn-delete" onclick="deleteReminder(${actualIdx})">
                                 🗑 Eliminar
@@ -2847,14 +2922,51 @@ setInterval(() => {
         }
 
         function openModal() {
+            editingReminderIdx = null;
+            const modalHeader = document.getElementById('reminder-modal-header');
+            if (modalHeader) modalHeader.textContent = 'Agregar Recordatorio';
+            const saveBtn = document.getElementById('reminder-save-btn');
+            if (saveBtn) saveBtn.textContent = 'Guardar';
             document.getElementById('reminder-modal').classList.add('active');
             populateCategorySelect();
             populateReminderSubjectSelect();
         }
 
         function closeModal() {
+            editingReminderIdx = null;
             document.getElementById('reminder-modal').classList.remove('active');
             clearForm();
+        }
+
+        function openEditReminder(idx) {
+            const reminder = reminders[idx];
+            if (!reminder) return;
+            editingReminderIdx = idx;
+
+            populateCategorySelect();
+            populateReminderSubjectSelect();
+
+            // Poblar el formulario con los datos actuales
+            const typeEl = document.getElementById('reminder-type');
+            const subjectEl = document.getElementById('reminder-subject');
+            const titleEl = document.getElementById('reminder-title');
+            const descEl = document.getElementById('reminder-description');
+            const dateEl = document.getElementById('reminder-date');
+            const timeEl = document.getElementById('reminder-time');
+
+            if (typeEl) typeEl.value = reminder.type || '';
+            if (subjectEl) subjectEl.value = reminder.subject || '';
+            if (titleEl) titleEl.value = reminder.title || '';
+            if (descEl) descEl.value = reminder.description || '';
+            if (dateEl) dateEl.value = reminder.date || '';
+            if (timeEl) timeEl.value = reminder.time || '';
+
+            const modalHeader = document.getElementById('reminder-modal-header');
+            if (modalHeader) modalHeader.textContent = '✏️ Editar Recordatorio';
+            const saveBtn = document.getElementById('reminder-save-btn');
+            if (saveBtn) saveBtn.textContent = 'Actualizar';
+
+            document.getElementById('reminder-modal').classList.add('active');
         }
 
         function openClassModal(day, idx) {
@@ -2879,10 +2991,10 @@ setInterval(() => {
                 </div>
                 <div style="background: white; border: 2px dashed #ddd; border-radius: 8px; padding: 15px; text-align: center;">
                     <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
-                        Agrega notas, tareas o recordatorios para esta materia
+                        Modifica los datos de esta clase o agrega un recordatorio
                     </div>
-                    <button onclick="addQuickNote('${day}', ${idx})" style="padding: 10px 20px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-weight: 500; cursor: pointer; margin-right: 10px;">
-                        📝 Nota Rápida
+                    <button onclick="closeClassModal(); editClass('${day}', ${idx});" style="padding: 10px 20px; background: #E3F2FD; border: none; border-radius: 5px; color: #1565C0; font-weight: 500; cursor: pointer; margin-right: 10px;">
+                        ✏️ Editar Clase
                     </button>
                 </div>
             `;
@@ -3731,13 +3843,13 @@ setInterval(function() {
         function updateNotificationStatus() {
             const statusDiv = document.getElementById('notification-status');
             if (!statusDiv) return;
-            
+
             if (!('Notification' in window)) {
                 statusDiv.innerHTML = '❌ Tu navegador no soporta notificaciones';
                 statusDiv.style.background = '#FFEBEE';
                 return;
             }
-            
+
             if (Notification.permission === 'granted') {
                 statusDiv.innerHTML = '✅ Notificaciones HABILITADAS<br><span style="font-size: 11px;">Recibirás alertas en tiempo real</span>';
                 statusDiv.style.background = '#E8F5E9';
@@ -3747,6 +3859,90 @@ setInterval(function() {
             } else {
                 statusDiv.innerHTML = '⏳ Notificaciones DESHABILITADAS<br><span style="font-size: 11px;">Toca el botón abajo para activarlas</span>';
                 statusDiv.style.background = '#FFF3E0';
+            }
+        }
+
+        function isGoogleUser() {
+            return currentUser && currentUser.providerData &&
+                currentUser.providerData.some(p => p.providerId === 'google.com');
+        }
+
+        function updateCalendarConnectionStatus() {
+            const statusEl = document.getElementById('calendar-connect-status');
+            if (!statusEl) return;
+
+            const notificationMethod = document.getElementById('notification-method')?.value || 'web';
+
+            // Solo mostrar estado si Calendar está seleccionado
+            if (notificationMethod === 'calendar' || notificationMethod === 'both') {
+                statusEl.style.display = 'block';
+
+                if (googleCalendarToken) {
+                    statusEl.textContent = '✅ Google Calendar conectado';
+                    statusEl.style.color = '#4CAF50';
+                } else {
+                    statusEl.textContent = '⚠️ Conecta Google Calendar para sincronizar';
+                    statusEl.style.color = '#FF9800';
+                }
+            } else {
+                statusEl.style.display = 'none';
+            }
+        }
+
+        /**
+         * Muestra la sección de auto-sync para usuarios Google y oculta el botón de reconexión manual.
+         * Para usuarios no-Google, muestra el botón manual.
+         */
+        function updateCalendarSectionForUser() {
+            const autoSyncSection = document.getElementById('google-auto-sync-section');
+            const reconnectBtn = document.getElementById('btn-reconnect-calendar');
+
+            if (isGoogleUser()) {
+                if (autoSyncSection) autoSyncSection.style.display = 'block';
+                if (reconnectBtn) reconnectBtn.style.display = 'none';
+            } else {
+                if (autoSyncSection) autoSyncSection.style.display = 'none';
+                if (reconnectBtn) reconnectBtn.style.display = 'flex';
+            }
+        }
+
+        /**
+         * Para usuarios Google: intenta obtener un token de Calendar fresco de forma silenciosa.
+         * Usa signInWithPopup con prompt:'none' para reautenticar sin interacción visual.
+         */
+        async function autoRenewGoogleCalendarToken() {
+            if (!isGoogleUser()) return;
+            const statusEl = document.getElementById('calendar-connect-status');
+            const renewBtn = document.getElementById('btn-renew-calendar');
+            if (renewBtn) renewBtn.disabled = true;
+            if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '🔄 Renovando token...'; statusEl.style.color = '#666'; }
+
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('https://www.googleapis.com/auth/calendar.events');
+                provider.setCustomParameters({ prompt: 'none' });
+
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+                if ((isMobile || isStandalone) && !isLocalhost) {
+                    localStorage.setItem('pendingCalendarReconnect', 'true');
+                    await auth.signInWithRedirect(provider);
+                } else {
+                    const result = await auth.signInWithPopup(provider);
+                    if (result.credential && result.credential.accessToken) {
+                        googleCalendarToken = result.credential.accessToken;
+                        if (gapiInited) gapi.client.setToken({ access_token: googleCalendarToken });
+                        if (statusEl) { statusEl.textContent = '✅ Token renovado correctamente'; statusEl.style.color = '#4CAF50'; }
+                        console.log('✅ Token de Google Calendar renovado automáticamente');
+                    }
+                }
+            } catch (error) {
+                console.warn('No se pudo renovar token silenciosamente:', error);
+                if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '⚠️ Cierra sesión y vuelve a entrar con Google para renovar el acceso.'; statusEl.style.color = '#FF9800'; }
+            } finally {
+                if (renewBtn) renewBtn.disabled = false;
             }
         }
 
@@ -3964,6 +4160,35 @@ setInterval(function() {
                 return;
             }
 
+            // ============ MODO EDICIÓN ============
+            if (editingReminderIdx !== null) {
+                const existing = reminders[editingReminderIdx];
+                const editedAt = new Date().toISOString();
+                const updateData = { type, subject, title, description, date, time, editedAt };
+                try {
+                    if (currentUser) {
+                        const docId = existing.firestoreId || String(existing.id);
+                        await db.collection('users').doc(currentUser.uid)
+                            .collection('reminders').doc(docId).update(updateData);
+                    } else {
+                        // Fallback localStorage
+                        Object.assign(reminders[editingReminderIdx], updateData);
+                        localStorage.setItem('reminders', JSON.stringify(reminders));
+                    }
+                    // Actualizar array local inmediatamente
+                    Object.assign(reminders[editingReminderIdx], updateData);
+                    closeModal();
+                    if (currentView === 'recordatorios') renderReminders();
+                    if (currentView === 'calendario') updateCalendar();
+                    alert('✅ Recordatorio actualizado');
+                } catch (error) {
+                    console.error('Error al actualizar recordatorio:', error);
+                    alert('❌ Error al actualizar recordatorio');
+                }
+                return;
+            }
+
+            // ============ MODO CREACIÓN ============
             let reminder;
             try {
                 reminder = {
@@ -4006,36 +4231,39 @@ setInterval(function() {
             // Sincronizar con Google Calendar / notificaciones (errores aquí no afectan el guardado)
             try {
                 const notificationMethod = document.getElementById('notification-method')?.value || 'web';
-                if (notificationMethod === 'calendar' || notificationMethod === 'both') {
-                    if (!googleCalendarToken) {
-                        // No hay token de Calendar — informar al usuario que necesita reconectar
-                        alert('✅ Recordatorio guardado.\n\n⚠️ No estás conectado a Google Calendar.\nVe a Configuración → Notificaciones → "Reconectar Google Calendar" para sincronizar.');
-                    } else {
+                let calendarSynced = false;
+
+                // Intentar sincronizar con Google Calendar si está configurado
+                if ((notificationMethod === 'calendar' || notificationMethod === 'both') && googleCalendarToken) {
+                    try {
                         const calendarEventId = await addToGoogleCalendar(reminder);
                         if (calendarEventId && currentUser) {
                             await db.collection('users').doc(currentUser.uid)
                                 .collection('reminders')
                                 .doc(String(reminder.id))
                                 .update({ calendarEventId });
+                            calendarSynced = true;
                         }
-                        if (calendarEventId) {
-                            alert('✅ Recordatorio guardado y agregado a Google Calendar.');
-                        } else if (!googleCalendarToken) {
-                            // El token expiró durante la operación
-                            alert('✅ Recordatorio guardado.\n⚠️ Tu sesión de Google Calendar expiró.\nVe a Configuración → "Reconectar Google Calendar".');
-                        } else {
-                            alert('✅ Recordatorio guardado.\n⚠️ No se pudo sincronizar con Google Calendar. Intenta de nuevo.');
-                        }
+                    } catch (calError) {
+                        console.warn('⚠️ No se pudo sincronizar con Google Calendar:', calError);
                     }
+                }
+
+                // Programar notificación web como fallback o método principal
+                if (time && (notificationMethod === 'web' || notificationMethod === 'both' || !calendarSynced)) {
+                    await scheduleEnhancedNotification(reminder);
+                }
+
+                // Mensaje simple sin alerts molestos
+                if (calendarSynced) {
+                    alert('✅ Recordatorio guardado y sincronizado con Google Calendar.');
                 } else {
-                    if (time) {
-                        await scheduleEnhancedNotification(reminder);
-                    }
                     alert('✅ Recordatorio guardado!');
                 }
+
             } catch (notifError) {
                 console.warn('⚠️ Recordatorio guardado, pero falló la notificación:', notifError);
-                alert('✅ Recordatorio guardado.\n⚠️ No se pudo programar la notificación push.');
+                alert('✅ Recordatorio guardado!');
             }
         }
 
@@ -5009,6 +5237,56 @@ function formatLocalDate(date) {
 // SISTEMA DE AUTENTICACIÓN
 // ==============================================
 
+// Manejar resultado de signInWithRedirect (para PWAs en modo standalone)
+async function handleRedirectResult() {
+    try {
+        const result = await auth.getRedirectResult();
+
+        // Verificar si hay un redirect pendiente
+        const isPendingCalendarReconnect = localStorage.getItem('pendingCalendarReconnect');
+
+        if (result && result.credential && result.credential.accessToken) {
+            console.log('✅ Redirect completado exitosamente');
+
+            // Si era una reconexión de Google Calendar
+            if (isPendingCalendarReconnect === 'true') {
+                googleCalendarToken = result.credential.accessToken;
+                if (gapiInited) {
+                    gapi.client.setToken({ access_token: googleCalendarToken });
+                }
+
+                // Mostrar mensaje de éxito
+                const status = document.getElementById('calendar-connect-status');
+                if (status) {
+                    status.style.display = 'block';
+                    status.textContent = '✅ Google Calendar conectado correctamente';
+                    status.style.color = '#4CAF50';
+                }
+
+                console.log('✅ Google Calendar reconectado exitosamente vía redirect');
+                updateCalendarConnectionStatus();
+                localStorage.removeItem('pendingCalendarReconnect');
+            }
+        } else if (isPendingCalendarReconnect === 'true') {
+            // Si esperábamos un resultado pero no llegó, limpiar flag
+            localStorage.removeItem('pendingCalendarReconnect');
+        }
+    } catch (error) {
+        console.error('Error al procesar redirect result:', error);
+        localStorage.removeItem('pendingCalendarReconnect');
+
+        const status = document.getElementById('calendar-connect-status');
+        if (status && localStorage.getItem('pendingCalendarReconnect') === 'true') {
+            status.style.display = 'block';
+            status.textContent = '❌ Error al conectar. Intenta nuevamente.';
+            status.style.color = '#f44336';
+        }
+    }
+}
+
+// Llamar al cargar la app para procesar redirects pendientes
+handleRedirectResult();
+
 // Observer de autenticación
 auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -5021,28 +5299,71 @@ auth.onAuthStateChanged(async (user) => {
         if (authScreenEl) authScreenEl.style.display = 'none';
         if (mainAppEl) mainAppEl.style.display = 'block';
 
-        // Actualizar header con nombre de usuario
-        const subtitle = document.querySelector('.header .subtitle');
-        if (subtitle) {
-            subtitle.textContent = `👤 ${user.displayName || user.email}`;
+        // Actualizar header con nombre, foto de usuario
+        const subtitle = document.getElementById('header-subtitle');
+        if (subtitle) subtitle.textContent = '1RO MATEMÁTICA';
+
+        const headerUserInfo = document.getElementById('header-user-info');
+        const userAvatar = document.getElementById('user-avatar');
+        const userDisplayName = document.getElementById('user-display-name');
+        if (headerUserInfo) headerUserInfo.style.display = 'flex';
+        if (userDisplayName) userDisplayName.textContent = user.displayName || user.email.split('@')[0];
+        if (userAvatar) {
+            if (user.photoURL) {
+                userAvatar.src = user.photoURL;
+                userAvatar.style.display = 'block';
+            } else {
+                // Avatar genérico con inicial
+                userAvatar.style.display = 'none';
+            }
         }
 
-        // Actualizar email en configuración
+        // Actualizar email y perfil en configuración
         const userEmailEl = document.getElementById('user-email');
-        if (userEmailEl) {
-            userEmailEl.textContent = user.email;
+        if (userEmailEl) userEmailEl.textContent = user.email;
+        const userSettingsName = document.getElementById('user-settings-name');
+        if (userSettingsName) userSettingsName.textContent = user.displayName || user.email.split('@')[0];
+        const userSettingsAvatar = document.getElementById('user-settings-avatar');
+        if (userSettingsAvatar) {
+            if (user.photoURL) {
+                userSettingsAvatar.src = user.photoURL;
+                userSettingsAvatar.style.display = 'block';
+            } else {
+                userSettingsAvatar.style.display = 'none';
+            }
         }
 
         // Cargar método de notificaciones preferido
         const userDoc = await db.collection('users').doc(user.uid).get();
+        const isGoogleProvider = user.providerData && user.providerData.some(p => p.providerId === 'google.com');
+
         if (userDoc.exists) {
             const userData = userDoc.data();
-            const notificationMethod = userData.notificationMethod || 'web';
-            const methodSelect = document.getElementById('notification-method');
-            if (methodSelect) {
-                methodSelect.value = notificationMethod;
+            let notificationMethod = userData.notificationMethod || 'web';
+
+            // Para usuarios Google, forzar 'calendar' como método si aún no lo tienen
+            if (isGoogleProvider && notificationMethod === 'web') {
+                notificationMethod = 'calendar';
+                // Actualizar en Firestore silenciosamente
+                db.collection('users').doc(user.uid).update({ notificationMethod: 'calendar' }).catch(() => {});
             }
+
+            const methodSelect = document.getElementById('notification-method');
+            if (methodSelect) methodSelect.value = notificationMethod;
+        } else if (isGoogleProvider) {
+            // Usuario nuevo por Google → auto-seleccionar calendar
+            const methodSelect = document.getElementById('notification-method');
+            if (methodSelect) methodSelect.value = 'calendar';
         }
+
+        // Para usuarios Google: si ya tenemos token (del login actual), aplicarlo
+        if (isGoogleProvider && googleCalendarToken && gapiInited) {
+            gapi.client.setToken({ access_token: googleCalendarToken });
+            console.log('✅ Token de Google Calendar aplicado automáticamente');
+        }
+
+        // Actualizar sección de Calendar en configuración según tipo de usuario
+        updateCalendarSectionForUser();
 
         // Verificar si necesita migración desde localStorage
         await checkAndMigrateData(user.uid);
@@ -5062,8 +5383,13 @@ auth.onAuthStateChanged(async (user) => {
         userDataUnsubscribers = [];
 
         // Resetear subtitle al valor original
-        const subtitleLogout = document.querySelector('.header .subtitle');
+        const subtitleLogout = document.getElementById('header-subtitle');
         if (subtitleLogout) subtitleLogout.textContent = '1RO MATEMÁTICA';
+
+        const headerUserInfoLogout = document.getElementById('header-user-info');
+        if (headerUserInfoLogout) headerUserInfoLogout.style.display = 'none';
+        const userAvatarLogout = document.getElementById('user-avatar');
+        if (userAvatarLogout) { userAvatarLogout.src = ''; userAvatarLogout.style.display = 'none'; }
 
         // Mostrar pantalla de login
         const authScreenLogout = document.getElementById('auth-screen');
@@ -5258,9 +5584,15 @@ async function loginWithGoogle() {
                 email: result.user.email,
                 photoURL: result.user.photoURL,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                notificationMethod: 'web',
+                notificationMethod: 'calendar', // Usuarios Google → auto-calendar
                 theme: 'light'
             });
+        } else {
+            // Si ya existe, asegurarse de que tenga calendar como método preferido
+            const existingData = userDoc.data();
+            if (existingData.notificationMethod === 'web') {
+                await db.collection('users').doc(result.user.uid).update({ notificationMethod: 'calendar' });
+            }
         }
 
         console.log('✅ Login con Google exitoso');
@@ -5273,7 +5605,13 @@ async function loginWithGoogle() {
         } else if (error.code === 'auth/unauthorized-domain') {
             showAuthError('⚠️ Dominio no autorizado. Pide al administrador que agregue este dominio en Firebase Console → Authentication → Authorized domains.');
         } else if (error.message && error.message.includes('redirect_uri_mismatch')) {
-            showAuthError('⚠️ Error de configuración OAuth. Agrega el dominio de la app en Google Cloud Console → Credenciales → Orígenes JavaScript autorizados.');
+            const currentOrigin = window.location.origin;
+            showAuthError(`⚠️ Error de configuración OAuth.\n\n` +
+                `1. Ve a: https://console.cloud.google.com/apis/credentials\n` +
+                `2. Edita tu OAuth Client ID\n` +
+                `3. En "Authorized JavaScript origins" agrega:\n   ${currentOrigin}\n` +
+                `4. En "Authorized redirect URIs" agrega:\n   ${currentOrigin}/__/auth/handler\n` +
+                `5. Guarda y espera 2 minutos`);
         } else {
             showAuthError('Error al iniciar sesión con Google: ' + (error.message || error.code || 'error desconocido'));
         }
@@ -5564,6 +5902,9 @@ async function saveNotificationMethod() {
 
         console.log('✅ Método de notificaciones actualizado:', method);
 
+        // Actualizar indicador visual de estado de Calendar
+        updateCalendarConnectionStatus();
+
         // Mostrar mensaje según el método
         let message = '';
         if (method === 'calendar') {
@@ -5586,7 +5927,7 @@ async function saveNotificationMethod() {
 
 /**
  * Reconecta Google Calendar para usuarios ya autenticados.
- * Abre el popup de Google para obtener un nuevo access token con scope de Calendar.
+ * Usa redirect en móviles (popups bloqueados) y popup en desktop (más rápido).
  */
 async function reconnectGoogleCalendar() {
     const btn = document.getElementById('btn-reconnect-calendar');
@@ -5601,17 +5942,36 @@ async function reconnectGoogleCalendar() {
         // No pedir seleccionar cuenta, usar la sesión actual
         provider.setCustomParameters({ prompt: 'none' });
 
-        const result = await auth.signInWithPopup(provider);
+        // Detectar si está en dispositivo móvil o PWA instalada
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                          || window.navigator.standalone
+                          || document.referrer.includes('android-app://');
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-        if (result.credential && result.credential.accessToken) {
-            googleCalendarToken = result.credential.accessToken;
-            if (gapiInited) {
-                gapi.client.setToken({ access_token: googleCalendarToken });
-            }
-            console.log('✅ Google Calendar reconectado exitosamente');
-            if (status) { status.textContent = '✅ Google Calendar conectado correctamente'; status.style.color = '#4CAF50'; }
+        // Usar popup en localhost/desarrollo (más fácil de configurar)
+        // Usar redirect en móviles en producción (los popups no funcionan bien en móviles)
+        if ((isMobile || isStandalone) && !isLocalhost) {
+            console.log('📱 Usando signInWithRedirect (dispositivo móvil o PWA)');
+            localStorage.setItem('pendingCalendarReconnect', 'true');
+            await auth.signInWithRedirect(provider);
+            // El resultado se manejará en handleRedirectResult() al volver
         } else {
-            throw new Error('No se obtuvo token de acceso');
+            // En navegador de escritorio O desarrollo local, usar popup (más rápido)
+            console.log('🖥️ Usando signInWithPopup (navegador de escritorio o desarrollo)');
+            const result = await auth.signInWithPopup(provider);
+
+            if (result.credential && result.credential.accessToken) {
+                googleCalendarToken = result.credential.accessToken;
+                if (gapiInited) {
+                    gapi.client.setToken({ access_token: googleCalendarToken });
+                }
+                console.log('✅ Google Calendar reconectado exitosamente');
+                if (status) { status.textContent = '✅ Google Calendar conectado correctamente'; status.style.color = '#4CAF50'; }
+                updateCalendarConnectionStatus();
+            } else {
+                throw new Error('No se obtuvo token de acceso');
+            }
         }
     } catch (error) {
         console.error('Error al reconectar Google Calendar:', error);

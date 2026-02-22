@@ -29,10 +29,8 @@ messaging.onBackgroundMessage((payload) => {
 // Tu código existente (sin cambios)
 // =============================================
 
-const CACHE_NAME = 'horario-esfm-v1';
+const CACHE_NAME = 'horario-esfm-v2';
 const urlsToCache = [
-  './',
-  'index.html',
   'manifest.json',
   'icon-192.png'
 ];
@@ -67,14 +65,34 @@ self.addEventListener('activate', function(event) {
   );
 });
 
-// FETCH - servir desde cache o red
+// FETCH - network-first para HTML, cache-first para assets estáticos
 self.addEventListener('fetch', function(event) {
-  event.respondWith(
-    caches.match(event.request)
-      .then(function(response) {
-        return response || fetch(event.request);
-      })
-  );
+  // Para navegación (index.html): siempre intenta red primero
+  if (event.request.mode === 'navigate' || event.request.url.endsWith('index.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(function(response) {
+          // Actualiza el caché con la versión nueva
+          var responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        })
+        .catch(function() {
+          // Sin conexión: sirve desde caché
+          return caches.match(event.request);
+        })
+    );
+  } else {
+    // Para assets (imágenes, iconos): cache-first está bien
+    event.respondWith(
+      caches.match(event.request)
+        .then(function(response) {
+          return response || fetch(event.request);
+        })
+    );
+  }
 });
 
 // 🔔 PUSH - recibir notificaciones push
